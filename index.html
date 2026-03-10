@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - FINAL</title>
+    <title>HACKEN CONNECT - V9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -107,6 +107,13 @@
         .mode-card { background: var(--card); padding: 30px; border-radius: 24px; width: 90%; max-width: 350px; text-align: center; }
         .mode-option { background: var(--input); padding: 15px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
         .mode-option:hover { background: rgba(99, 102, 241, 0.2); }
+
+        /* Comments Modal */
+        .comments-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 80; display: flex; align-items: flex-end; }
+        .comments-card { background: var(--card); width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 70vh; display: flex; flex-direction: column; animation: slideUp 0.3s; }
+        .comment-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; }
+        .comment-user { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
+        .comment-text { font-size: 13px; color: #e2e8f0; }
     </style>
 </head>
 <body>
@@ -129,12 +136,27 @@
         </div>
     </div>
 
+    <!-- COMMENTS MODAL -->
+    <div id="comments-modal" class="comments-modal hidden" onclick="if(event.target === this) closeComments()">
+        <div class="comments-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 class="font-bold" style="font-size:18px;">Commentaires</h3>
+                <button onclick="closeComments()" style="background:none; border:none; color:white; font-size:20px;">✕</button>
+            </div>
+            <div id="comments-list" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="comment-input" placeholder="Écrire un commentaire..." style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none;">
+                <button onclick="postComment()" class="btn-small btn-primary">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGIN -->
     <div id="login-screen" class="login-screen animate-fade">
         <div class="text-center mb-8">
             <div style="font-size: 60px; margin-bottom: 15px;">🎮</div>
             <h1 style="font-size: 32px; font-weight: 800; margin: 0;">HACKEN CONNECT</h1>
-            <p style="color: #94a3b8; margin: 5px 0 0 0;">FINAL EDITION</p>
+            <p style="color: #94a3b8; margin: 5px 0 0 0;">V9 EDITION</p>
         </div>
         <div class="login-box animate-fade">
             <label style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 12px;">Connexion</label>
@@ -178,7 +200,10 @@
                 </div>
                 <div style="font-size: 10px; color: #4ade80; display:flex; align-items:center;"><span style="width: 6px; height: 6px; background: #4ade80; border-radius: 50%; margin-right: 5px;"></span> En ligne</div>
             </div>
-            <button onclick="switchView('messages')" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 12px;">💬</button>
+            <button onclick="openChatList()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; position:relative;">
+                💬
+                <span id="msg-badge" class="hidden" style="position:absolute; top:-5px; right:-5px; background:red; color:white; font-size:10px; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;">!</span>
+            </button>
         </div>
 
         <div id="view-home" class="view active">
@@ -210,15 +235,11 @@
 
         <div id="view-friends" class="view">
             <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Réseau</h2>
-            
-            <!-- Add Friend by Code -->
             <div class="card" style="display:flex; gap:10px; align-items:center;">
                 <input type="text" id="add-friend-code" placeholder="Code Ami (ex: HK-1234)" style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none;">
                 <button onclick="addFriendByCode()" class="btn-small btn-success">Ajouter</button>
             </div>
-            
             <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom..." class="card" style="width: 100%; box-sizing: border-box; margin-bottom: 25px;">
-            
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 class="font-bold" style="color: #94a3b8; font-size: 14px; text-transform: uppercase;">Mes Amis</h3>
                 <button onclick="editProfileName()" class="btn-small btn-edit">✏️ Modifier mon nom</button>
@@ -226,12 +247,13 @@
             <div id="friends-list"></div>
         </div>
 
-        <div id="view-messages" class="view" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--dark); z-index: 50; padding-top: 70px;">
+        <!-- CHAT LIST VIEW -->
+        <div id="view-chatlist" class="view" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--dark); z-index: 50; padding-top: 70px;">
             <div style="position: absolute; top: 0; left: 0; right: 0; padding: 20px; background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 15px;">
                 <button onclick="switchView('home')" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px;">←</button>
-                <h2 class="font-bold">Messages</h2>
+                <h2 class="font-bold">Conversations</h2>
             </div>
-            <div id="chat-list-container" style="padding: 15px;"></div>
+            <div id="full-chat-list" style="padding: 15px;"></div>
         </div>
 
         <div id="view-profile" class="view">
@@ -241,17 +263,12 @@
                     <label for="avatar-upload" style="position: absolute; bottom: 5px; right: 5px; background: var(--primary); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid var(--card);">📷</label>
                     <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="updateAvatar(this)">
                 </div>
-                
                 <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:5px;">
                     <h2 id="profile-name" class="font-bold" style="font-size: 24px; margin: 0;">Nom</h2>
                     <button onclick="editProfileName()" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:24px; height:24px; font-size:12px;">✏️</button>
                 </div>
-                
-                <div style="background:rgba(99, 102, 241, 0.2); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 10px; display:inline-block;">
-                    CODE: <span id="profile-code" style="font-family:monospace; letter-spacing:1px;">HK-0000</span>
-                </div>
+                <div style="background:rgba(99, 102, 241, 0.2); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 10px; display:inline-block;">CODE: <span id="profile-code" style="font-family:monospace; letter-spacing:1px;">HK-0000</span></div>
                 <p style="font-size:10px; color:#94a3b8; margin-bottom:25px;">Partage ce code pour ajouter des amis</p>
-                
                 <div style="display: inline-block; background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 25px;">NIVEAU <span id="profile-level">1</span></div>
                 <div class="grid-2" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
                     <div><div class="font-bold" style="font-size: 28px; color: var(--primary);" id="stat-wins">0</div><div style="font-size: 11px; color: #94a3b8;">Victoires</div></div>
@@ -325,7 +342,7 @@
         let currentUser = null;
         let db = { users: [], posts: [], chats: {}, challenges: [], matchmaking: [] };
         let selectedCode = "+243", selectedFlag = "🇨🇩";
-        let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '';
+        let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [] };
 
         // --- INIT ---
@@ -338,8 +355,6 @@
             document.getElementById('selected-flag').innerText = selectedFlag;
         };
         function saveDB() { localStorage.setItem('hacken_db', JSON.stringify(db)); }
-
-        // Generate User Code
         function generateCode() { return 'HK-' + Math.floor(1000 + Math.random() * 9000); }
 
         // --- MATCHMAKING ---
@@ -417,19 +432,20 @@
         function showApp() { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-container').classList.remove('hidden'); updateUI(); renderFeed(); renderFriends(); renderOnline(); }
         function updateUI() { if(!currentUser) return; document.getElementById('header-name').innerText = currentUser.name; document.getElementById('profile-name').innerText = currentUser.name; document.getElementById('profile-code').innerText = currentUser.code || generateCode(); document.getElementById('header-avatar').src = currentUser.avatar; document.getElementById('profile-avatar').src = currentUser.avatar; document.getElementById('stat-wins').innerText = currentUser.wins; document.getElementById('stat-games').innerText = currentUser.games; document.getElementById('profile-level').innerText = Math.floor(currentUser.wins / 5) + 1; }
         function logout() { 
-            // Update last seen before logout
             const idx = db.users.findIndex(u => u.id === currentUser.id);
             if(idx !== -1) { db.users[idx].lastSeen = Date.now(); saveDB(); }
             sessionStorage.removeItem('hacken_user'); location.reload(); 
         }
 
         // --- NAV & FRIENDS ---
-        function switchView(viewId, el) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById('view-' + viewId).classList.add('active'); if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); } }
-        
-        function isOnline(user) {
-            // Simple logic: if last seen within 1 minute, consider online
-            return (Date.now() - user.lastSeen) < 60000;
+        function switchView(viewId, el) { 
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); 
+            const target = document.getElementById(viewId.startsWith('view-') ? viewId : 'view-' + viewId);
+            if(target) target.classList.add('active'); 
+            if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); } 
         }
+        
+        function isOnline(user) { return (Date.now() - user.lastSeen) < 60000; }
 
         function renderFriends() { 
             const list = document.getElementById('friends-list'); 
@@ -512,11 +528,124 @@
             </div>`;
         }).join(''); }
 
-        // --- FEED ---
-        function createPost(winner, loser, score, game) { if(!winner || !loser) return; db.posts.unshift({ id: Date.now(), userId: winner.id, user: winner.name, avatar: winner.avatar, action: "a gagné contre", opponent: loser.name, score: score, game: game, likes: 0, liked: false, comments: [] }); saveDB(); renderFeed(); }
-        function renderFeed() { const container = document.getElementById('feed-container'); if (!db.posts || db.posts.length === 0) { document.getElementById('empty-feed').classList.remove('hidden'); container.innerHTML = ''; return; } document.getElementById('empty-feed').classList.add('hidden'); container.innerHTML = db.posts.map(p => `<div class="card animate-fade"><div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;"><img src="${p.avatar}" class="avatar" style="width:35px; height:35px;"><b style="font-size:15px;">${p.user}</b><span style="font-size:10px; color:#94a3b8; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:8px;">${p.game}</span></div><div style="background:rgba(15, 23, 42, 0.5); padding:15px; border-radius:12px; text-align:center; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);"><div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">${p.user} ${p.action} ${p.opponent}</div><div style="font-size:20px; font-weight:800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${p.score}</div></div><div style="display:flex; gap:20px; font-size:13px; color:#94a3b8;"><span onclick="toggleLike(${p.id})" style="cursor:pointer;" class="${p.liked ? 'text-secondary' : ''}">❤️ ${p.likes}</span><span onclick="addComment(${p.id})" style="cursor:pointer;">💬 ${p.comments.length}</span></div></div>`).join(''); }
-        function toggleLike(postId) { const p = db.posts.find(x => x.id === postId); if(p) { if(p.liked) { p.likes--; p.liked = false; } else { p.likes++; p.liked = true; } saveDB(); renderFeed(); } }
-        function addComment(postId) { const txt = prompt("Votre commentaire :"); if(txt) { const p = db.posts.find(x => x.id === postId); if(p) { p.comments.push(txt); saveDB(); renderFeed(); } } }
+        // --- FEED & COMMENTS ---
+        function createPost(winner, loser, score, game) { if(!winner || !loser) return; db.posts.unshift({ id: Date.now(), userId: winner.id, user: winner.name, avatar: winner.avatar, action: "a gagné contre", opponent: loser.name, score: score, game: game, likes: 0, likedBy: [], comments: [] }); saveDB(); renderFeed(); }
+        
+        function renderFeed() { 
+            const container = document.getElementById('feed-container'); 
+            if (!db.posts || db.posts.length === 0) { document.getElementById('empty-feed').classList.remove('hidden'); container.innerHTML = ''; return; } 
+            document.getElementById('empty-feed').classList.add('hidden'); 
+            container.innerHTML = db.posts.map(p => {
+                const isLiked = p.likedBy && p.likedBy.includes(currentUser.id);
+                return `<div class="card animate-fade">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                        <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
+                        <b style="font-size:15px;">${p.user}</b>
+                        <span style="font-size:10px; color:#94a3b8; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:8px;">${p.game}</span>
+                    </div>
+                    <div style="background:rgba(15, 23, 42, 0.5); padding:15px; border-radius:12px; text-align:center; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">${p.user} ${p.action} ${p.opponent}</div>
+                        <div style="font-size:20px; font-weight:800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${p.score}</div>
+                    </div>
+                    <div style="display:flex; gap:20px; font-size:13px; color:#94a3b8;">
+                        <span onclick="toggleLike(${p.id})" style="cursor:pointer;" class="${isLiked ? 'text-secondary' : ''}">
+                            ❤️ <span style="font-weight:600;">${p.likes}</span>
+                        </span>
+                        <span onclick="openComments(${p.id})" style="cursor:pointer;">
+                            💬 <span style="font-weight:600;">${p.comments ? p.comments.length : 0}</span>
+                        </span>
+                    </div>
+                </div>`;
+            }).join(''); 
+        }
+        
+        function toggleLike(postId) { 
+            const p = db.posts.find(x => x.id === postId); 
+            if(p) { 
+                if(!p.likedBy) p.likedBy = [];
+                const idx = p.likedBy.indexOf(currentUser.id);
+                if(idx === -1) { 
+                    p.likedBy.push(currentUser.id); 
+                    p.likes = (p.likes || 0) + 1; 
+                } else { 
+                    p.likedBy.splice(idx, 1); 
+                    p.likes = (p.likes || 0) - 1; 
+                }
+                saveDB(); 
+                renderFeed(); 
+            } 
+        }
+
+        function openComments(postId) {
+            activePostId = postId;
+            const p = db.posts.find(x => x.id === postId);
+            const list = document.getElementById('comments-list');
+            if(!p.comments || p.comments.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire. Sois le premier !</p>';
+            } else {
+                list.innerHTML = p.comments.map(c => `
+                    <div class="comment-item">
+                        <div class="comment-user">${c.user}</div>
+                        <div class="comment-text">${c.text}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('comments-modal').classList.remove('hidden');
+            document.getElementById('comment-input').value = '';
+            document.getElementById('comment-input').focus();
+        }
+
+        function closeComments() {
+            document.getElementById('comments-modal').classList.add('hidden');
+            activePostId = null;
+        }
+
+        function postComment() {
+            const txt = document.getElementById('comment-input').value.trim();
+            if(!txt || !activePostId) return;
+            const p = db.posts.find(x => x.id === activePostId);
+            if(p) {
+                if(!p.comments) p.comments = [];
+                p.comments.push({ user: currentUser.name, text: txt, time: Date.now() });
+                saveDB();
+                openComments(activePostId); // Refresh list
+                renderFeed(); // Update count
+            }
+        }
+
+        // --- CHAT LIST ---
+        function openChatList() {
+            const list = document.getElementById('full-chat-list');
+            // Get all users I have chatted with
+            const chatKeys = Object.keys(db.chats);
+            const myChats = chatKeys.filter(key => key.includes(currentUser.id));
+            
+            if(myChats.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation commencée.</p>';
+            } else {
+                list.innerHTML = myChats.map(key => {
+                    const ids = key.split('_');
+                    const otherId = ids.find(id => id !== currentUser.id);
+                    const friend = db.users.find(u => u.id === otherId);
+                    if(!friend) return '';
+                    const msgs = db.chats[key];
+                    const lastMsg = msgs[msgs.length-1];
+                    const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    
+                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.id}')">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${friend.avatar}" class="avatar">
+                            <div>
+                                <b style="font-size:15px; display:block;">${friend.name}</b>
+                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === currentUser.id ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
+                            </div>
+                        </div>
+                        <span style="font-size:10px; color:#64748b;">${time}</span>
+                    </div>`;
+                }).join('');
+            }
+            switchView('view-chatlist');
+        }
 
         // --- MODE SELECTION ---
         function openModeModal(game, friendId = null) { selectedGameType = game; document.getElementById('selected-game-name').innerText = game.toUpperCase(); document.getElementById('mode-modal').classList.remove('hidden'); window.tempFriendId = friendId; }
@@ -571,20 +700,16 @@
         // Penalty
         function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
 
-        // --- CHAT (With Animation & BG) ---
+        // --- CHAT ---
         function openChat(fid) { 
             activeChatId = fid; 
             const friend = db.users.find(u => u.id === fid); 
             if(!friend) return; 
             document.getElementById('chat-header-name').innerText = friend.name; 
             document.getElementById('chat-header-img').src = friend.avatar; 
-            
-            // Status
             const statusEl = document.getElementById('chat-status');
             if(isOnline(friend)) { statusEl.innerText = "● En ligne"; statusEl.style.color = "#4ade80"; }
             else { statusEl.innerText = "● Hors ligne"; statusEl.style.color = "#ef4444"; }
-            
-            // Create Particles
             const bgContainer = document.getElementById('chat-bg-container');
             bgContainer.innerHTML = '';
             for(let i=0; i<15; i++) {
@@ -597,7 +722,6 @@
                 p.style.height = p.style.width;
                 bgContainer.appendChild(p);
             }
-            
             document.getElementById('chat-interface').classList.remove('hidden'); 
             renderChatMessages(); 
         }
