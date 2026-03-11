@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - ARCADE ULTIME</title>
+    <title>HACKEN CONNECT - FIX FINAL</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
@@ -831,24 +831,43 @@
                 });
                 
                 listenToFriendRequests();
+                // Force refresh friends list to update online status
+                setTimeout(renderFriends, 1000);
             });
 
-            peer.on('connection', (conn) => { setupConnection(conn); });
+            peer.on('connection', (conn) => { 
+                setupConnection(conn); 
+                // Update UI immediately when someone connects to us
+                setTimeout(renderFriends, 500);
+            });
+            
             peer.on('error', (err) => { statusEl.className = 'connection-status status-offline'; statusText.innerText = 'Erreur'; });
         }
 
         function setupConnection(conn) {
             connections[conn.peer] = conn;
             conn.on('data', (data) => handleData(data, conn.peer));
-            conn.on('close', () => { delete connections[conn.peer]; updateFriendStatus(conn.peer, false); });
+            conn.on('close', () => { 
+                delete connections[conn.peer]; 
+                updateFriendStatus(conn.peer, false); 
+            });
+            conn.on('open', () => {
+                // Connection established successfully
+                updateFriendStatus(conn.peer, true);
+            });
         }
 
         function sendToPeer(peerId, data) {
-            if (connections[peerId]) { connections[peerId].send(data); return true; }
-            else {
+            if (connections[peerId]) { 
+                connections[peerId].send(data); 
+                return true; 
+            } else {
                 const conn = peer.connect(peerId);
                 setupConnection(conn);
-                setTimeout(() => { if(connections[peerId]) connections[peerId].send(data); }, 1000);
+                // Retry sending once connected
+                conn.on('open', () => {
+                    connections[peerId].send(data);
+                });
                 return false;
             }
         }
@@ -878,7 +897,19 @@
             }
         }
 
-        function updateFriendStatus(peerId, online) { renderFriends(); renderOnline(); }
+        function updateFriendStatus(peerId, online) { 
+            // Update the specific friend in localDB if needed, but mainly refresh UI
+            renderFriends(); 
+            renderOnline(); 
+            // If we are currently chatting with this person, update header status
+            if(activeChatId === peerId) {
+                const statusEl = document.getElementById('chat-status');
+                if(statusEl) {
+                    statusEl.innerText = online ? "● En ligne" : "● Hors ligne";
+                    statusEl.style.color = online ? "#4ade80" : "#ef4444";
+                }
+            }
+        }
 
         // --- NOTIFICATIONS ---
         function showNotification(text, type, key = null) {
@@ -1016,53 +1047,57 @@
             let allContacts = [];
             
             localDB.friends.forEach(f => {
-                allContacts.push({ ...f, status: 'friend', type: 'friend' });
+                // Check real-time connection status
+                const isOnline = !!connections[f.peerId];
+                allContacts.push({ ...f, status: 'friend', type: 'friend', isOnline: isOnline });
             });
             
             localDB.friendRequests.filter(r => r.targetId === currentUser.id && r.status === 'pending').forEach(r => {
                 if(!allContacts.find(c => c.id === r.fromId)) {
-                    allContacts.push({ id: r.fromId, name: r.fromName, avatar: r.fromAvatar, status: 'pending_received', type: 'request', key: r.key });
+                    allContacts.push({ id: r.fromId, name: r.fromName, avatar: r.fromAvatar, status: 'pending_received', type: 'request', key: r.key, isOnline: !!connections[r.fromPeerId] });
                 }
             });
 
             localDB.friendRequests.filter(r => r.fromId === currentUser.id && r.status === 'pending').forEach(r => {
                  if(!allContacts.find(c => c.id === r.targetId)) {
-                    allContacts.push({ id: r.targetId, name: r.name, status: 'pending_sent', type: 'sent' });
+                    allContacts.push({ id: r.targetId, name: r.name, status: 'pending_sent', type: 'sent', isOnline: false });
                 }
             });
 
             if (allContacts.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun contact.</p>'; return; } 
             
             list.innerHTML = allContacts.map(f => { 
-                const isOnline = !!connections[f.peerId] || (f.status === 'friend' && f.peerId); 
-                
                 let actions = '';
                 if(f.status === 'friend') {
                     actions = `
                     <div style="display:flex; gap:5px;">
-                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-primary">💬 Écrire</button>
-                        ${isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : ''}
+                        <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-primary">💬 Écrire</button>
+                        ${f.isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : ''}
                     </div>`;
                 } else if (f.status === 'pending_received') {
                     actions = `
                     <div style="display:flex; gap:5px; flex-direction:column;">
                         <button onclick="acceptFriendRequestByKey('${f.key}', '${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">✅ Accepter</button>
-                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-secondary">💬 Répondre</button>
+                        <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-secondary">💬 Répondre</button>
                     </div>`;
                 } else if (f.status === 'pending_sent') {
                     actions = `<span style="font-size:10px; color:#eab308;">⏳ Invitation envoyée</span>`;
                 }
 
+                const statusColor = f.isOnline ? '#22c55e' : '#94a3b8';
+                const statusText = f.isOnline ? 'En ligne' : 'Hors ligne';
+                const dotColor = (f.status === 'friend' && f.isOnline) ? '#22c55e' : '#64748b';
+
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="position:relative;">
                             <img src="${f.avatar || 'https://ui-avatars.com/api/?name='+f.name}" class="avatar">
-                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline && f.status==='friend' ? '#22c55e' : '#64748b'}; border-radius:50%; border:2px solid var(--card);"></div>
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${dotColor}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
                         <div>
                             <b style="font-size:15px; display:block;">${f.name}</b>
-                            <span style="font-size:10px; color:${f.status==='friend' ? (isOnline ? '#22c55e' : '#94a3b8') : '#eab308'}">
-                                ${f.status==='friend' ? (isOnline ? 'En ligne' : 'Hors ligne') : (f.status==='pending_received' ? 'Veut t\'ajouter' : 'En attente')}
+                            <span style="font-size:10px; color:${f.status==='friend' ? statusColor : '#eab308'}">
+                                ${f.status==='friend' ? statusText : (f.status==='pending_received' ? 'Veut t\'ajouter' : 'En attente')}
                             </span>
                         </div>
                     </div>
@@ -1071,16 +1106,31 @@
             }).join(''); 
         }
         
+        // Force open chat even if status seems offline (tries to reconnect)
+        function forceOpenChat(peerId, name, avatar) {
+            // Try to connect first
+            if(!connections[peerId]) {
+                const conn = peer.connect(peerId);
+                setupConnection(conn);
+                // Wait a tiny bit for connection then open
+                setTimeout(() => {
+                    openChat(peerId, name, avatar);
+                }, 500);
+            } else {
+                openChat(peerId, name, avatar);
+            }
+        }
+
         function searchUsers() { 
             const q = document.getElementById('search-input').value.toLowerCase().trim(); 
             const list = document.getElementById('friends-list'); 
             if (q.length < 2) { renderFriends(); return; } 
             
             let matches = [];
-            localDB.friends.forEach(f => { if(f.name.toLowerCase().includes(q)) matches.push({...f, status:'friend', type:'friend'}); });
+            localDB.friends.forEach(f => { if(f.name.toLowerCase().includes(q)) matches.push({...f, status:'friend', type:'friend', isOnline: !!connections[f.peerId]}); });
             localDB.friendRequests.forEach(r => {
-                if(r.fromName && r.fromName.toLowerCase().includes(q) && r.targetId === currentUser.id) matches.push({id:r.fromId, name:r.fromName, avatar:r.fromAvatar, status:'pending_received', type:'request', key:r.key});
-                if(r.name && r.name.toLowerCase().includes(q) && r.fromId === currentUser.id) matches.push({id:r.targetId, name:r.name, status:'pending_sent', type:'sent'});
+                if(r.fromName && r.fromName.toLowerCase().includes(q) && r.targetId === currentUser.id) matches.push({id:r.fromId, name:r.fromName, avatar:r.fromAvatar, status:'pending_received', type:'request', key:r.key, isOnline: !!connections[r.fromPeerId]});
+                if(r.name && r.name.toLowerCase().includes(q) && r.fromId === currentUser.id) matches.push({id:r.targetId, name:r.name, status:'pending_sent', type:'sent', isOnline: false});
             });
 
             if(matches.length === 0) {
@@ -1191,7 +1241,7 @@
                     const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const count = unreadCounts[otherId] || 0;
                     
-                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.peerId}')">
+                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="forceOpenChat('${friend.peerId}', '${friend.name}', '${friend.avatar}')">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${friend.avatar}" class="avatar">
                             <div>
@@ -1774,15 +1824,26 @@
         function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
 
         // --- CHAT ---
-        function openChat(peerId) { 
+        // Modified openChat to accept parameters directly to ensure it works even if friend list isn't fully synced
+        function openChat(peerId, name, avatar) { 
             activeChatId = peerId; 
-            const friend = localDB.friends.find(u => u.peerId === peerId); 
-            if(!friend) return; 
-            document.getElementById('chat-header-name').innerText = friend.name; 
-            document.getElementById('chat-header-img').src = friend.avatar; 
+            
+            // Use provided name/avatar or fallback to lookup
+            const friendName = name || (localDB.friends.find(u => u.peerId === peerId)?.name) || "Ami";
+            const friendAvatar = avatar || (localDB.friends.find(u => u.peerId === peerId)?.avatar) || "";
+
+            document.getElementById('chat-header-name').innerText = friendName; 
+            document.getElementById('chat-header-img').src = friendAvatar; 
+            
             const statusEl = document.getElementById('chat-status');
-            if(connections[peerId]) { statusEl.innerText = "● En ligne"; statusEl.style.color = "#4ade80"; }
-            else { statusEl.innerText = "● Hors ligne"; statusEl.style.color = "#ef4444"; }
+            const isOnline = !!connections[peerId];
+            if(isOnline) { 
+                statusEl.innerText = "● En ligne"; 
+                statusEl.style.color = "#4ade80"; 
+            } else { 
+                statusEl.innerText = "● Hors ligne"; 
+                statusEl.style.color = "#ef4444"; 
+            }
             
             const bgContainer = document.getElementById('chat-bg-container');
             bgContainer.innerHTML = '';
@@ -1799,6 +1860,7 @@
             document.getElementById('chat-interface').classList.remove('hidden'); 
             renderChatMessages(); 
         }
+
         function closeChat() { document.getElementById('chat-interface').classList.add('hidden'); activeChatId = null; }
         function getChatKey(pid) { if(!currentUser || !pid) return ''; const ids = [currentUser.id, myPeerId, pid].filter(Boolean).sort(); return ids.join('_'); }
         function renderChatMessages() { 
