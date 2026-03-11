@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - FIX FINAL CHAT</title>
+    <title>HACKEN CONNECT - ULTRA STABLE</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
@@ -594,6 +594,7 @@
         let pendingChallenge = null;
         let unreadCounts = {};
         let pendingFriendRequest = null;
+        let messageQueue = {}; // File d'attente pour les messages
 
         // --- INIT ---
         window.onload = function() {
@@ -810,13 +811,21 @@
              }
         }
 
-        // --- PEER JS CONNECTION ---
+        // --- PEER JS CONNECTION (ROBUSTE) ---
         function initPeer() {
             const statusEl = document.getElementById('conn-status');
             const statusText = document.getElementById('conn-text');
             const peerId = currentUser.peerId || 'user_' + Math.random().toString(36).substr(2, 9);
             
-            peer = new Peer(peerId, { debug: 2 });
+            peer = new Peer(peerId, { 
+                debug: 2,
+                config: {
+                    'iceServers': [
+                        { url: 'stun:stun.l.google.com:19302' },
+                        { url: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
 
             peer.on('open', (id) => {
                 myPeerId = id;
@@ -831,54 +840,85 @@
                 });
                 
                 listenToFriendRequests();
-                // Force refresh friends list to update online status
                 setTimeout(renderFriends, 1000);
+                console.log("Mon PeerID:", myPeerId);
             });
 
             peer.on('connection', (conn) => { 
                 setupConnection(conn); 
-                // Update UI immediately when someone connects to us
                 setTimeout(renderFriends, 500);
             });
             
-            peer.on('error', (err) => { statusEl.className = 'connection-status status-offline'; statusText.innerText = 'Erreur'; });
+            peer.on('error', (err) => { 
+                console.error("PeerJS Error:", err);
+                statusEl.className = 'connection-status status-offline'; 
+                statusText.innerText = 'Erreur Réseau'; 
+            });
+            
+            peer.on('disconnected', () => {
+                statusEl.className = 'connection-status status-connecting';
+                statusText.innerText = 'Reconnexion...';
+                peer.reconnect();
+            });
         }
 
         function setupConnection(conn) {
-            connections[conn.peer] = conn;
-            conn.on('data', (data) => handleData(data, conn.peer));
-            conn.on('close', () => { 
-                delete connections[conn.peer]; 
-                updateFriendStatus(conn.peer, false); 
-            });
+            const peerId = conn.peer;
+            connections[peerId] = conn;
+            
             conn.on('open', () => {
-                // Connection established successfully
-                updateFriendStatus(conn.peer, true);
+                console.log("Connecté à:", peerId);
+                updateFriendStatus(peerId, true);
+                // Envoyer les messages en attente
+                if(messageQueue[peerId]) {
+                    messageQueue[peerId].forEach(msg => {
+                        conn.send(msg);
+                    });
+                    delete messageQueue[peerId];
+                }
+            });
+
+            conn.on('data', (data) => handleData(data, conn.peer));
+            
+            conn.on('close', () => { 
+                console.log("Déconnecté de:", peerId);
+                delete connections[peerId]; 
+                updateFriendStatus(peerId, false); 
+            });
+            
+            conn.on('error', (err) => {
+                console.error("Erreur de connexion avec", peerId, err);
+                updateFriendStatus(peerId, false);
             });
         }
 
         function sendToPeer(peerId, data) {
-            if (connections[peerId]) { 
+            if (connections[peerId] && connections[peerId].open) { 
                 connections[peerId].send(data); 
                 return true; 
             } else {
-                const conn = peer.connect(peerId);
-                setupConnection(conn);
-                // Retry sending once connected
-                conn.on('open', () => {
-                    connections[peerId].send(data);
-                });
+                // Mettre en file d'attente si pas connecté
+                if(!messageQueue[peerId]) messageQueue[peerId] = [];
+                messageQueue[peerId].push(data);
+                
+                // Tenter de se connecter
+                if(!connections[peerId]) {
+                    const conn = peer.connect(peerId);
+                    setupConnection(conn);
+                }
                 return false;
             }
         }
 
         function handleData(data, senderId) {
             if (data.type === 'chat') {
+                // Recevoir un message
+                const key = getChatKey(senderId);
+                if (!localDB.chats[key]) localDB.chats[key] = [];
+                localDB.chats[key].push({ sender: senderId, text: data.text, time: Date.now() });
+                saveLocal();
+                
                 if (activeChatId === senderId) {
-                    const key = getChatKey(senderId);
-                    if (!localDB.chats[key]) localDB.chats[key] = [];
-                    localDB.chats[key].push({ sender: senderId, text: data.text, time: Date.now() });
-                    saveLocal();
                     renderChatMessages();
                 } else {
                     unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
@@ -898,10 +938,8 @@
         }
 
         function updateFriendStatus(peerId, online) { 
-            // Update the specific friend in localDB if needed, but mainly refresh UI
             renderFriends(); 
             renderOnline(); 
-            // If we are currently chatting with this person, update header status
             if(activeChatId === peerId) {
                 const statusEl = document.getElementById('chat-status');
                 if(statusEl) {
@@ -1047,7 +1085,6 @@
             let allContacts = [];
             
             localDB.friends.forEach(f => {
-                // Check real-time connection status
                 const isOnline = !!connections[f.peerId];
                 allContacts.push({ ...f, status: 'friend', type: 'friend', isOnline: isOnline });
             });
@@ -1069,7 +1106,6 @@
             list.innerHTML = allContacts.map(f => { 
                 let actions = '';
                 if(f.status === 'friend') {
-                    // FIXED BUTTON: Uses forceOpenChat which handles connection logic
                     actions = `
                     <div style="display:flex; gap:5px;">
                         <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-primary">💬 Écrire</button>
@@ -1107,24 +1143,20 @@
             }).join(''); 
         }
         
-        // FIXED: This function now guarantees the chat opens
         function forceOpenChat(peerId, name, avatar) {
             console.log("Tentative d'ouverture de chat avec:", peerId);
             
-            // Si pas de connexion, on la crée
             if(!connections[peerId]) {
                 console.log("Pas de connexion, création en cours...");
                 const conn = peer.connect(peerId);
                 setupConnection(conn);
                 
-                // On attend un tout petit peu que la connexion s'établisse puis on ouvre
+                // Ouvrir le chat immédiatement (l'utilisateur verra "Hors ligne" si pas encore connecté)
+                // Mais les messages seront envoyés dès que la connexion sera là grâce à la file d'attente
                 setTimeout(() => {
-                    console.log("Ouverture du chat après délai...");
                     openChat(peerId, name, avatar);
-                }, 600); // 600ms de délai pour être sûr
+                }, 500);
             } else {
-                // Connexion déjà existante, on ouvre direct
-                console.log("Connexion existante, ouverture immédiate.");
                 openChat(peerId, name, avatar);
             }
         }
@@ -1568,27 +1600,20 @@
             }
         }
         
-        // Logique avancée pour 4x4
         function checkWin4x4(p) {
             const wins = [
-                // Rows
                 [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15],
-                // Cols
                 [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15],
-                // Diagonals
                 [0,5,10,15], [3,6,9,12]
             ];
             return wins.some(c => c.every(i => gameVars.tttBoard[i] === p));
         }
         
         function getBestMove4x4(me, opponent) {
-            // 1. Gagner
             let move = findWinningMove(me);
             if(move !== -1) return move;
-            // 2. Bloquer
             move = findWinningMove(opponent);
             if(move !== -1) return move;
-            // 3. Centre
             if([5,6,9,10].some(i => gameVars.tttBoard[i] === '')) {
                 const centers = [5,6,9,10].filter(i => gameVars.tttBoard[i] === '');
                 return centers[Math.floor(Math.random() * centers.length)];
@@ -1644,7 +1669,6 @@
         function playC4(col) {
             if(!gameVars.c4Active || !gameVars.myTurn) return;
             
-            // Trouver la première case libre en partant du bas
             let row = -1;
             for(let r=5; r>=0; r--) {
                 if(gameVars.c4Board[r][col] === '') {
@@ -1653,7 +1677,7 @@
                 }
             }
             
-            if(row === -1) return; // Colonne pleine
+            if(row === -1) return;
             
             gameVars.c4Board[row][col] = 'red';
             renderC4();
@@ -1677,7 +1701,6 @@
         
         function botPlayC4() {
             if(!gameVars.c4Active) return;
-            // Bot simple : aléatoire mais évite les colonnes pleines
             let availableCols = [];
             for(let c=0; c<7; c++) {
                 if(gameVars.c4Board[0][c] === '') availableCols.push(c);
@@ -1704,21 +1727,18 @@
         }
         
         function checkC4Win(player) {
-            // Horizontal
             for(let r=0; r<6; r++) {
                 for(let c=0; c<4; c++) {
                     if(gameVars.c4Board[r][c] === player && gameVars.c4Board[r][c+1] === player && 
                        gameVars.c4Board[r][c+2] === player && gameVars.c4Board[r][c+3] === player) return true;
                 }
             }
-            // Vertical
             for(let r=0; r<3; r++) {
                 for(let c=0; c<7; c++) {
                     if(gameVars.c4Board[r][c] === player && gameVars.c4Board[r+1][c] === player && 
                        gameVars.c4Board[r+2][c] === player && gameVars.c4Board[r+3][c] === player) return true;
                 }
             }
-            // Diagonales
             for(let r=0; r<3; r++) {
                 for(let c=0; c<4; c++) {
                     if(gameVars.c4Board[r][c] === player && gameVars.c4Board[r+1][c+1] === player && 
@@ -1773,22 +1793,19 @@
                 }, 500);
             } else if (currentOpponent && currentOpponent.peerId) {
                 sendToPeer(currentOpponent.peerId, { type: 'war_click' });
-                // Attendre la réponse
-                gameVars.warOppCard = -1; // En attente
+                gameVars.warOppCard = -1;
                 checkWarResult();
             }
         }
         
         function handleWarOpponentClick() {
             if(gameVars.warActive) {
-                // L'adversaire a cliqué avant moi
                 gameVars.warActive = false;
                 document.getElementById('war-btn').disabled = true;
                 document.getElementById('war-result').innerText = "TROP LENT ! PERDU !";
                 document.getElementById('war-result').style.color = "#ef4444";
                 finishGame(false, 'war');
             } else {
-                // On a cliqué en même temps ou après, on génère les cartes
                 if(gameVars.warOppCard === -1) {
                     gameVars.warOppCard = Math.floor(Math.random() * 100) + 1;
                     document.getElementById('war-opp-card').innerText = gameVars.warOppCard;
@@ -1812,14 +1829,13 @@
                     document.getElementById('war-result').style.color = "#eab308";
                 }
             } else if (gameVars.warOppCard === -1) {
-                // En attente de l'adversaire
                 setTimeout(checkWarResult, 100);
             }
         }
         
         function resetWar() { initWar(); }
 
-        // --- AUTRES JEUX (Speed, RPS, etc.) ---
+        // --- AUTRES JEUX ---
         function resetSpeedGame() { gameVars.speedScore = 0; gameVars.speedTime = 5; gameVars.isSpeedActive = false; document.getElementById('score-display').innerText = '0'; document.getElementById('speed-timer').innerText = '5.00'; document.getElementById('click-btn').style.opacity = '0.5'; document.getElementById('click-btn').style.pointerEvents = 'none'; document.getElementById('start-speed-btn').classList.remove('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); }
         function startSpeedGame() { resetSpeedGame(); gameVars.isSpeedActive = true; document.getElementById('start-speed-btn').classList.add('hidden'); document.getElementById('click-btn').style.opacity = '1'; document.getElementById('click-btn').style.pointerEvents = 'auto'; gameVars.speedInterval = setInterval(() => { gameVars.speedTime -= 0.01; if(gameVars.speedTime <= 0) { clearInterval(gameVars.speedInterval); gameVars.isSpeedActive = false; document.getElementById('click-btn').style.opacity = '0.5'; document.getElementById('click-btn').style.pointerEvents = 'none'; if(gameVars.speedScore > 30) finishGame(true, 'speed'); else finishGame(false, 'speed'); } document.getElementById('speed-timer').innerText = gameVars.speedTime.toFixed(2); }, 10); }
         function handleSpeedClick(e) { if(e) e.preventDefault(); if(!gameVars.isSpeedActive) return; gameVars.speedScore++; document.getElementById('score-display').innerText = gameVars.speedScore; }
@@ -1831,12 +1847,10 @@
         function flipMemory(i) { if(gameVars.flipped.length >= 2 || gameVars.flipped.includes(i) || gameVars.matched.includes(i)) return; gameVars.flipped.push(i); renderMemory(); if(gameVars.flipped.length === 2) { setTimeout(() => { if(gameVars.memoryCards[gameVars.flipped[0]] === gameVars.memoryCards[gameVars.flipped[1]]) { gameVars.matched.push(...gameVars.flipped); if(gameVars.matched.length === 8) finishGame(true, 'memory'); } gameVars.flipped = []; renderMemory(); }, 1000); } }
         function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
 
-        // --- CHAT ---
-        // Modified openChat to accept parameters directly to ensure it works even if friend list isn't fully synced
+        // --- CHAT (FIXED) ---
         function openChat(peerId, name, avatar) { 
             activeChatId = peerId; 
             
-            // Use provided name/avatar or fallback to lookup
             const friendName = name || (localDB.friends.find(u => u.peerId === peerId)?.name) || "Ami";
             const friendAvatar = avatar || (localDB.friends.find(u => u.peerId === peerId)?.avatar) || "";
 
@@ -1882,13 +1896,23 @@
             const input = document.getElementById('chat-input'); 
             const text = input.value.trim(); 
             if (!text || !activeChatId) return; 
+            
             const key = getChatKey(activeChatId); 
             if (!localDB.chats[key]) localDB.chats[key] = []; 
-            localDB.chats[key].push({ sender: myPeerId, text: text, time: Date.now() }); 
-            saveLocal(); 
+            
+            // Sauvegarder localement immédiatement
+            const msgObj = { sender: myPeerId, text: text, time: Date.now() };
+            localDB.chats[key].push(msgObj);
+            saveLocal();
+            
             input.value = ''; 
             renderChatMessages(); 
-            sendToPeer(activeChatId, { type: 'chat', text: text });
+            
+            // Envoyer au pair (avec file d'attente si nécessaire)
+            const sent = sendToPeer(activeChatId, { type: 'chat', text: text });
+            if(!sent) {
+                console.log("Message mis en file d'attente pour:", activeChatId);
+            }
         }
         function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
     </script>
