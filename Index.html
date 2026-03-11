@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - ULTRA STABLE</title>
-    <!-- PeerJS for P2P Chat/Games -->
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <title>HACKEN CONNECT - FIREBASE CHAT</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (Uniquement Firebase, pas de PeerJS pour le chat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
@@ -26,13 +24,11 @@
         @keyframes bgMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         @keyframes floatParticle { 0% { transform: translateY(0) rotate(0deg); opacity: 0.5; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
         @keyframes timerBar { 0% { width: 100%; background: #22c55e; } 100% { width: 0%; background: #ef4444; } }
-        @keyframes dropPiece { 0% { transform: translateY(-50px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         
         .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .msg-anim { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .timer-animate { animation: timerBar 10s linear forwards; }
-        .drop-anim { animation: dropPiece 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
         /* Utilities */
         .hidden { display: none !important; }
@@ -170,7 +166,7 @@
         .chat-header { padding: 15px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; z-index: 10; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 10; scroll-behavior: smooth; }
         .chat-input-area { padding: 10px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; align-items: center; z-index: 10; }
-        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 14px; position: relative; }
+        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 14px; position: relative; word-wrap: break-word; }
         .msg-me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
         .msg-other { align-self: flex-start; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); color: white; border-bottom-left-radius: 2px; }
         
@@ -197,7 +193,6 @@
         .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; z-index: 90; display: flex; align-items: center; gap: 5px; }
         .status-online { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
         .status-offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
-        .status-connecting { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
         
         /* Badge */
         .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -570,31 +565,31 @@
         };
 
         // Initialisation de Firebase
+        let db;
         if (!firebase.apps.length) {
             try {
                 const app = firebase.initializeApp(firebaseConfig);
-                const db = firebase.database();
+                db = firebase.database();
                 console.log("✅ Firebase Connecté avec succès !");
             } catch (e) {
                 console.error("❌ Erreur Firebase:", e);
                 alert("Erreur de connexion Firebase :\n" + e.message);
             }
+        } else {
+            db = firebase.database();
         }
 
-        // --- DATA & PEER JS ---
+        // --- DATA ---
         let currentUser = null;
-        let localDB = { friends: [], chats: [], friendRequests: [] }; 
+        let localDB = { friends: [], chats: {}, friendRequests: [] }; 
         let selectedCode = "+243", selectedFlag = "🇨🇩";
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, mathTimer: null, mathTimeLeft: 10, guessNum: 0, memoryCards: [], flipped: [], matched: [], turnTimer: null, myTurn: false, c4Board: [], c4Active: true, warMyCard: 0, warOppCard: 0, warActive: false };
         
-        let peer = null;
-        let myPeerId = null;
-        let connections = {}; 
         let pendingChallenge = null;
         let unreadCounts = {};
         let pendingFriendRequest = null;
-        let messageQueue = {}; // File d'attente pour les messages
+        let chatListener = null; // Pour gérer l'écouteur Firebase
 
         // --- INIT ---
         window.onload = function() {
@@ -617,7 +612,7 @@
             const feedContainer = document.getElementById('feed-container');
             const emptyFeed = document.getElementById('empty-feed');
             
-            firebase.database().ref('posts').orderByChild('timestamp').limitToLast(20).on('value', (snapshot) => {
+            db.ref('posts').orderByChild('timestamp').limitToLast(20).on('value', (snapshot) => {
                 feedContainer.innerHTML = '';
                 let hasPosts = false;
                 let postsArray = [];
@@ -660,7 +655,7 @@
 
         function listenToUsers() {
             const usersContainer = document.getElementById('users-container');
-            firebase.database().ref('users').orderByChild('joinedAt').on('value', (snapshot) => {
+            db.ref('users').orderByChild('joinedAt').on('value', (snapshot) => {
                 usersContainer.innerHTML = '';
                 let usersArray = [];
                 snapshot.forEach((childSnapshot) => {
@@ -702,7 +697,7 @@
         }
 
         function toggleLike(postId) {
-            const postRef = firebase.database().ref('posts/' + postId);
+            const postRef = db.ref('posts/' + postId);
             postRef.transaction((post) => {
                 if (post) {
                     if (!post.likedBy) post.likedBy = [];
@@ -721,7 +716,7 @@
             document.getElementById('comments-modal').classList.remove('hidden');
             document.getElementById('comment-input').value = '';
             
-            firebase.database().ref('posts/' + postId + '/comments').on('value', (snapshot) => {
+            db.ref('posts/' + postId + '/comments').on('value', (snapshot) => {
                 list.innerHTML = '';
                 if (!snapshot.exists()) { list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire.</p>'; return; }
                 snapshot.forEach((child) => {
@@ -733,18 +728,18 @@
         }
         function closeComments() { 
             document.getElementById('comments-modal').classList.add('hidden'); 
-            if(activePostId) firebase.database().ref('posts/' + activePostId + '/comments').off();
+            if(activePostId) db.ref('posts/' + activePostId + '/comments').off();
             activePostId = null; 
         }
         function postComment() {
             const txt = document.getElementById('comment-input').value.trim();
             if(!txt || !activePostId) return;
-            const newCommentRef = firebase.database().ref('posts/' + activePostId + '/comments').push();
+            const newCommentRef = db.ref('posts/' + activePostId + '/comments').push();
             newCommentRef.set({ user: currentUser.name, text: txt, time: Date.now() });
             document.getElementById('comment-input').value = '';
         }
 
-        // --- FRIEND REQUEST SYSTEM (REVISED LOGIC) ---
+        // --- FRIEND REQUEST SYSTEM ---
         function sendFriendRequest(targetId, targetPeerId, targetName) {
             if(!targetId) return;
             
@@ -752,7 +747,7 @@
             localDB.friendRequests.push(newReq);
             saveLocal();
             
-            firebase.database().ref('friend_requests').push({
+            db.ref('friend_requests').push({
                 fromId: currentUser.id,
                 fromName: currentUser.name,
                 fromAvatar: currentUser.avatar,
@@ -766,7 +761,7 @@
         }
 
         function listenToFriendRequests() {
-            firebase.database().ref('friend_requests').orderByChild('targetId').equalTo(currentUser.id).on('child_added', (snapshot) => {
+            db.ref('friend_requests').orderByChild('targetId').equalTo(currentUser.id).on('child_added', (snapshot) => {
                 const req = snapshot.val();
                 if(req.fromId !== currentUser.id && req.status === 'pending') {
                     if(!localDB.friendRequests.find(r => r.key === snapshot.key)) {
@@ -778,7 +773,7 @@
                 }
             });
             
-            firebase.database().ref('friend_requests').orderByChild('fromId').equalTo(currentUser.id).on('child_changed', (snapshot) => {
+            db.ref('friend_requests').orderByChild('fromId').equalTo(currentUser.id).on('child_changed', (snapshot) => {
                 const req = snapshot.val();
                 if(req.status === 'accepted') {
                     if(!localDB.friends.find(f => f.id === req.targetId)) {
@@ -792,7 +787,7 @@
         }
 
         function acceptFriendRequestByKey(key, fromId, fromName, fromAvatar) {
-            firebase.database().ref('friend_requests/' + key).update({ status: 'accepted', targetName: currentUser.name, targetAvatar: currentUser.avatar });
+            db.ref('friend_requests/' + key).update({ status: 'accepted', targetName: currentUser.name, targetAvatar: currentUser.avatar });
             
             if(!localDB.friends.find(f => f.id === fromId)) {
                 localDB.friends.push({ id: fromId, name: fromName, avatar: fromAvatar });
@@ -811,183 +806,7 @@
              }
         }
 
-        // --- PEER JS CONNECTION (ROBUSTE) ---
-        function initPeer() {
-            const statusEl = document.getElementById('conn-status');
-            const statusText = document.getElementById('conn-text');
-            const peerId = currentUser.peerId || 'user_' + Math.random().toString(36).substr(2, 9);
-            
-            peer = new Peer(peerId, { 
-                debug: 2,
-                config: {
-                    'iceServers': [
-                        { url: 'stun:stun.l.google.com:19302' },
-                        { url: 'stun:stun1.l.google.com:19302' }
-                    ]
-                }
-            });
-
-            peer.on('open', (id) => {
-                myPeerId = id;
-                currentUser.peerId = id;
-                updateUser(); 
-                document.getElementById('profile-peer-id').innerText = id;
-                statusEl.className = 'connection-status status-online';
-                statusText.innerText = 'En Ligne';
-                
-                firebase.database().ref('users/' + currentUser.id).update({
-                    name: currentUser.name, avatar: currentUser.avatar, online: true, code: currentUser.code, peerId: id
-                });
-                
-                listenToFriendRequests();
-                setTimeout(renderFriends, 1000);
-                console.log("Mon PeerID:", myPeerId);
-            });
-
-            peer.on('connection', (conn) => { 
-                setupConnection(conn); 
-                setTimeout(renderFriends, 500);
-            });
-            
-            peer.on('error', (err) => { 
-                console.error("PeerJS Error:", err);
-                statusEl.className = 'connection-status status-offline'; 
-                statusText.innerText = 'Erreur Réseau'; 
-            });
-            
-            peer.on('disconnected', () => {
-                statusEl.className = 'connection-status status-connecting';
-                statusText.innerText = 'Reconnexion...';
-                peer.reconnect();
-            });
-        }
-
-        function setupConnection(conn) {
-            const peerId = conn.peer;
-            connections[peerId] = conn;
-            
-            conn.on('open', () => {
-                console.log("Connecté à:", peerId);
-                updateFriendStatus(peerId, true);
-                // Envoyer les messages en attente
-                if(messageQueue[peerId]) {
-                    messageQueue[peerId].forEach(msg => {
-                        conn.send(msg);
-                    });
-                    delete messageQueue[peerId];
-                }
-            });
-
-            conn.on('data', (data) => handleData(data, conn.peer));
-            
-            conn.on('close', () => { 
-                console.log("Déconnecté de:", peerId);
-                delete connections[peerId]; 
-                updateFriendStatus(peerId, false); 
-            });
-            
-            conn.on('error', (err) => {
-                console.error("Erreur de connexion avec", peerId, err);
-                updateFriendStatus(peerId, false);
-            });
-        }
-
-        function sendToPeer(peerId, data) {
-            if (connections[peerId] && connections[peerId].open) { 
-                connections[peerId].send(data); 
-                return true; 
-            } else {
-                // Mettre en file d'attente si pas connecté
-                if(!messageQueue[peerId]) messageQueue[peerId] = [];
-                messageQueue[peerId].push(data);
-                
-                // Tenter de se connecter
-                if(!connections[peerId]) {
-                    const conn = peer.connect(peerId);
-                    setupConnection(conn);
-                }
-                return false;
-            }
-        }
-
-        function handleData(data, senderId) {
-            if (data.type === 'chat') {
-                // Recevoir un message
-                const key = getChatKey(senderId);
-                if (!localDB.chats[key]) localDB.chats[key] = [];
-                localDB.chats[key].push({ sender: senderId, text: data.text, time: Date.now() });
-                saveLocal();
-                
-                if (activeChatId === senderId) {
-                    renderChatMessages();
-                } else {
-                    unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
-                    updateBadges();
-                }
-            } else if (data.type === 'game_move') {
-                if (currentOpponent && currentOpponent.peerId === senderId) {
-                    processOnlineMove(data);
-                    resetTurnTimer();
-                }
-            } else if (data.type === 'timeout_loss') {
-                alert("L'adversaire a dépassé le temps imparti ! Vous gagnez.");
-                finishGame(true, selectedGameType);
-            } else if (data.type === 'war_click') {
-                handleWarOpponentClick();
-            }
-        }
-
-        function updateFriendStatus(peerId, online) { 
-            renderFriends(); 
-            renderOnline(); 
-            if(activeChatId === peerId) {
-                const statusEl = document.getElementById('chat-status');
-                if(statusEl) {
-                    statusEl.innerText = online ? "● En ligne" : "● Hors ligne";
-                    statusEl.style.color = online ? "#4ade80" : "#ef4444";
-                }
-            }
-        }
-
-        // --- NOTIFICATIONS ---
-        function showNotification(text, type, key = null) {
-            const toast = document.getElementById('notification-toast');
-            const txtEl = document.getElementById('notification-text');
-            const iconEl = document.getElementById('notif-icon');
-            
-            txtEl.innerText = text;
-            iconEl.innerText = type === 'friend' ? '👋' : '🔔';
-            toast.classList.add('show');
-            
-            if(key) toast.dataset.key = key;
-            else delete toast.dataset.key;
-
-            setTimeout(() => {
-                if(toast.classList.contains('show')) toast.classList.remove('show');
-            }, 8000);
-        }
-
-        function handleNotificationClick() {
-            const toast = document.getElementById('notification-toast');
-            const key = toast.dataset.key;
-            if(key) {
-                const req = localDB.friendRequests.find(r => r.key === key);
-                if(req) {
-                    if(confirm(`Accepter la demande de ${req.fromName} ?`)) {
-                        acceptFriendRequestByKey(key, req.fromId, req.fromName, req.fromAvatar);
-                    }
-                }
-            } else {
-                closeNotification();
-            }
-        }
-
-        function closeNotification(e) {
-            if(e) e.stopPropagation();
-            document.getElementById('notification-toast').classList.remove('show');
-        }
-
-        // --- AUTH ---
+        // --- AUTH & STATUS ---
         function toggleCountry() { document.getElementById('country-list').style.display = document.getElementById('country-list').style.display === 'block' ? 'none' : 'block'; }
         function setCountry(code, flag) { selectedCode = code; selectedFlag = flag; document.getElementById('selected-code').innerText = code; document.getElementById('selected-flag').innerText = flag; document.getElementById('country-list').style.display = 'none'; document.getElementById('phone-input').focus(); }
         document.addEventListener('click', (e) => { if (!document.getElementById('country-btn').contains(e.target) && !document.getElementById('country-list').contains(e.target)) document.getElementById('country-list').style.display = 'none'; });
@@ -1000,7 +819,7 @@
             const fullPhone = selectedCode + (phoneInput || '');
             const userId = fullPhone.replace(/[^a-zA-Z0-9]/g, '_'); 
             
-            firebase.database().ref('users/' + userId).once('value', (snapshot) => {
+            db.ref('users/' + userId).once('value', (snapshot) => {
                 let user = snapshot.val();
                 
                 if (!user) {
@@ -1010,10 +829,14 @@
                         phone: fullPhone, 
                         code: 'HK-' + Math.floor(1000 + Math.random() * 9000),
                         avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", 
-                        wins: 0, games: 0, peerId: null,
-                        joinedAt: Date.now()
+                        wins: 0, games: 0, peerId: userId, // Use userId as peerId for simplicity
+                        joinedAt: Date.now(),
+                        online: true
                     };
-                    firebase.database().ref('users/' + userId).set(user);
+                    db.ref('users/' + userId).set(user);
+                } else {
+                    // Update online status
+                    db.ref('users/' + userId).update({ online: true, lastSeen: Date.now() });
                 }
                 
                 currentUser = user;
@@ -1021,10 +844,9 @@
                 sessionStorage.setItem('hacken_last_phone', fullPhone);
                 
                 if (!silent) {
-                    initPeer(); 
                     showApp();
                 } else {
-                    if(currentUser) { initPeer(); showApp(); }
+                    if(currentUser) { showApp(); }
                 }
             });
         }
@@ -1032,11 +854,40 @@
         function showApp() { 
             document.getElementById('login-screen').classList.add('hidden'); 
             document.getElementById('app-container').classList.remove('hidden'); 
+            document.getElementById('conn-status').className = 'connection-status status-online';
+            document.getElementById('conn-text').innerText = 'En Ligne';
+            
             updateUI(); 
             renderFriends(); 
             renderOnline(); 
             listenToGlobalPosts();
             listenToUsers();
+            listenToFriendRequests();
+            
+            // Listen to friends online status
+            if(currentUser && currentUser.friends) {
+                currentUser.friends.forEach(friend => {
+                    db.ref('users/' + friend.id).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if(data) {
+                            // Update local friend list status
+                            const localFriend = localDB.friends.find(f => f.id === friend.id);
+                            if(localFriend) {
+                                localFriend.online = data.online;
+                                renderFriends();
+                                renderOnline();
+                                if(activeChatId === friend.id) {
+                                    const statusEl = document.getElementById('chat-status');
+                                    if(statusEl) {
+                                        statusEl.innerText = data.online ? "● En ligne" : "● Hors ligne";
+                                        statusEl.style.color = data.online ? "#4ade80" : "#ef4444";
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            }
         }
 
         function showHomeTab(tab) {
@@ -1058,7 +909,7 @@
             if(!currentUser) return; 
             document.getElementById('header-name').innerText = currentUser.name; 
             document.getElementById('profile-name').innerText = currentUser.name; 
-            if(myPeerId) document.getElementById('profile-peer-id').innerText = myPeerId; 
+            document.getElementById('profile-peer-id').innerText = currentUser.id; 
             document.getElementById('header-avatar').src = currentUser.avatar; 
             document.getElementById('profile-avatar').src = currentUser.avatar; 
             document.getElementById('stat-wins').innerText = currentUser.wins; 
@@ -1066,8 +917,10 @@
         }
         
         function logout() { 
-            if(peer) peer.destroy(); 
-            if(myPeerId) firebase.database().ref('users/' + currentUser.id).update({ online: false });
+            if(currentUser && currentUser.id) {
+                db.ref('users/' + currentUser.id).update({ online: false, lastSeen: Date.now() });
+            }
+            sessionStorage.removeItem('hacken_user'); 
             location.reload(); 
         }
 
@@ -1085,13 +938,12 @@
             let allContacts = [];
             
             localDB.friends.forEach(f => {
-                const isOnline = !!connections[f.peerId];
-                allContacts.push({ ...f, status: 'friend', type: 'friend', isOnline: isOnline });
+                allContacts.push({ ...f, status: 'friend', type: 'friend', isOnline: f.online || false });
             });
             
             localDB.friendRequests.filter(r => r.targetId === currentUser.id && r.status === 'pending').forEach(r => {
                 if(!allContacts.find(c => c.id === r.fromId)) {
-                    allContacts.push({ id: r.fromId, name: r.fromName, avatar: r.fromAvatar, status: 'pending_received', type: 'request', key: r.key, isOnline: !!connections[r.fromPeerId] });
+                    allContacts.push({ id: r.fromId, name: r.fromName, avatar: r.fromAvatar, status: 'pending_received', type: 'request', key: r.key, isOnline: false });
                 }
             });
 
@@ -1108,14 +960,14 @@
                 if(f.status === 'friend') {
                     actions = `
                     <div style="display:flex; gap:5px;">
-                        <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-primary">💬 Écrire</button>
-                        ${f.isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : ''}
+                        <button onclick="openChat('${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-primary">💬 Écrire</button>
+                        ${f.isOnline ? `<button onclick="openModeModal('math', '${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️ Défier</button>` : ''}
                     </div>`;
                 } else if (f.status === 'pending_received') {
                     actions = `
                     <div style="display:flex; gap:5px; flex-direction:column;">
                         <button onclick="acceptFriendRequestByKey('${f.key}', '${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">✅ Accepter</button>
-                        <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-secondary">💬 Répondre</button>
+                        <button onclick="openChat('${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-secondary">💬 Répondre</button>
                     </div>`;
                 } else if (f.status === 'pending_sent') {
                     actions = `<span style="font-size:10px; color:#eab308;">⏳ Invitation envoyée</span>`;
@@ -1142,24 +994,6 @@
                 </div>`; 
             }).join(''); 
         }
-        
-        function forceOpenChat(peerId, name, avatar) {
-            console.log("Tentative d'ouverture de chat avec:", peerId);
-            
-            if(!connections[peerId]) {
-                console.log("Pas de connexion, création en cours...");
-                const conn = peer.connect(peerId);
-                setupConnection(conn);
-                
-                // Ouvrir le chat immédiatement (l'utilisateur verra "Hors ligne" si pas encore connecté)
-                // Mais les messages seront envoyés dès que la connexion sera là grâce à la file d'attente
-                setTimeout(() => {
-                    openChat(peerId, name, avatar);
-                }, 500);
-            } else {
-                openChat(peerId, name, avatar);
-            }
-        }
 
         function searchUsers() { 
             const q = document.getElementById('search-input').value.toLowerCase().trim(); 
@@ -1167,15 +1001,15 @@
             if (q.length < 2) { renderFriends(); return; } 
             
             let matches = [];
-            localDB.friends.forEach(f => { if(f.name.toLowerCase().includes(q)) matches.push({...f, status:'friend', type:'friend', isOnline: !!connections[f.peerId]}); });
+            localDB.friends.forEach(f => { if(f.name.toLowerCase().includes(q)) matches.push({...f, status:'friend', type:'friend', isOnline: f.online}); });
             localDB.friendRequests.forEach(r => {
-                if(r.fromName && r.fromName.toLowerCase().includes(q) && r.targetId === currentUser.id) matches.push({id:r.fromId, name:r.fromName, avatar:r.fromAvatar, status:'pending_received', type:'request', key:r.key, isOnline: !!connections[r.fromPeerId]});
+                if(r.fromName && r.fromName.toLowerCase().includes(q) && r.targetId === currentUser.id) matches.push({id:r.fromId, name:r.fromName, avatar:r.fromAvatar, status:'pending_received', type:'request', key:r.key, isOnline: false});
                 if(r.name && r.name.toLowerCase().includes(q) && r.fromId === currentUser.id) matches.push({id:r.targetId, name:r.name, status:'pending_sent', type:'sent', isOnline: false});
             });
 
             if(matches.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Recherche globale en cours...</p>';
-                firebase.database().ref('users').orderByChild('code').equalTo(q.toUpperCase()).once('value', snapshot => {
+                db.ref('users').orderByChild('code').equalTo(q.toUpperCase()).once('value', snapshot => {
                     const globalMatches = [];
                     snapshot.forEach(child => {
                         const u = child.val();
@@ -1192,7 +1026,7 @@
             if(matches.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun résultat trouvé.</p>'; return; }
             listElement.innerHTML = matches.map(u => { 
                 const isFriend = localDB.friends.find(f => f.id === u.id);
-                const isOnline = !!connections[u.peerId];
+                const isOnline = u.online || false;
                 
                 let action = '';
                 if(isLocal) {
@@ -1200,7 +1034,7 @@
                      else if(u.status === 'pending_received') action = `<button onclick="acceptFriendRequestByKey('${u.key}', '${u.id}', '${u.name}', '${u.avatar}')" class="btn-small btn-success">Accepter</button>`;
                      else action = '<span style="color:#eab308;">En attente</span>';
                 } else {
-                    action = `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-success">+ Ajouter</button>`;
+                    action = `<button onclick="sendFriendRequest('${u.id}', '${u.id}', '${u.name}')" class="btn-small btn-success">+ Ajouter</button>`;
                 }
 
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1222,28 +1056,29 @@
         function addFriendByID() {
             const pid = document.getElementById('add-friend-id').value.trim();
             if(!pid) return;
-            if(pid === myPeerId) { alert("Tu ne peux pas t'ajouter toi-même !"); return; }
-            if(localDB.friends.find(f => f.peerId === pid)) { alert("Déjà ami !"); return; }
+            if(pid === currentUser.id) { alert("Tu ne peux pas t'ajouter toi-même !"); return; }
+            if(localDB.friends.find(f => f.id === pid)) { alert("Déjà ami !"); return; }
             
-            const conn = peer.connect(pid);
-            conn.on('open', () => {
-                firebase.database().ref('users').orderByChild('peerId').equalTo(pid).once('value', snapshot => {
-                    let friendData = { peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" };
-                    snapshot.forEach(child => { friendData = child.val(); friendData.peerId = pid; });
-                    
-                    sendFriendRequest(friendData.id, pid, friendData.name);
-                    conn.close();
-                });
+            db.ref('users/' + pid).once('value', snapshot => {
+                const friendData = snapshot.val();
+                if(friendData) {
+                    sendFriendRequest(friendData.id, friendData.id, friendData.name);
+                } else {
+                    alert("Utilisateur introuvable.");
+                }
             });
-            conn.on('error', () => alert("ID invalide ou hors ligne."));
         }
         
-        function updateUser() { if(!currentUser) return; firebase.database().ref('users/' + currentUser.id).update(currentUser); sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
+        function updateUser() { 
+            if(!currentUser) return; 
+            db.ref('users/' + currentUser.id).update(currentUser); 
+            sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); 
+        }
         function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); updateUI(); } }
         function updateAvatar(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => { currentUser.avatar = e.target.result; updateUser(); updateUI(); }; reader.readAsDataURL(input.files[0]); } }
         
         function renderOnline() { 
-            const onlineFriends = localDB.friends.filter(f => connections[f.peerId]);
+            const onlineFriends = localDB.friends.filter(f => f.online);
             document.getElementById('online-list').innerHTML = onlineFriends.map(u => `
                 <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 12px;">
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -1256,13 +1091,13 @@
                             <span style="font-size:10px; color:#22c55e">En ligne</span>
                         </div>
                     </div>
-                    <button onclick="openModeModal('math', '${u.peerId}', '${u.name}', '${u.avatar}')" class="btn-small btn-primary">⚔️ Défier</button>
+                    <button onclick="openModeModal('math', '${u.id}', '${u.name}', '${u.avatar}')" class="btn-small btn-primary">⚔️ Défier</button>
                 </div>
             `).join('');
             if(onlineFriends.length === 0) document.getElementById('online-list').innerHTML = '<p style="color:#64748b; text-align:center;">Aucun ami en ligne.</p>';
         }
 
-        function copyPeerId() { navigator.clipboard.writeText(myPeerId).then(() => alert("ID copié !")); }
+        function copyPeerId() { navigator.clipboard.writeText(currentUser.id).then(() => alert("ID copié !")); }
 
         // --- CHAT LIST ---
         function openChatList() {
@@ -1272,21 +1107,21 @@
             else {
                 list.innerHTML = chatKeys.map(key => {
                     const ids = key.split('_');
-                    const otherId = ids.find(id => id !== currentUser.id && id !== myPeerId);
+                    const otherId = ids.find(id => id !== currentUser.id);
                     if(!otherId) return '';
-                    const friend = localDB.friends.find(f => f.id === otherId || f.peerId === otherId);
+                    const friend = localDB.friends.find(f => f.id === otherId);
                     if(!friend) return '';
                     const msgs = localDB.chats[key];
                     const lastMsg = msgs[msgs.length-1];
                     const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const count = unreadCounts[otherId] || 0;
                     
-                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="forceOpenChat('${friend.peerId}', '${friend.name}', '${friend.avatar}')">
+                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.id}', '${friend.name}', '${friend.avatar}')">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${friend.avatar}" class="avatar">
                             <div>
                                 <b style="font-size:15px; display:block;">${friend.name}</b>
-                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === myPeerId ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
+                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === currentUser.id ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
                             </div>
                         </div>
                         <div style="text-align:right;">
@@ -1300,11 +1135,11 @@
         }
 
         // --- MODE SELECTION ---
-        function openModeModal(game, friendPeerId = null, friendName = null, friendAvatar = null) { 
+        function openModeModal(game, friendId = null, friendName = null, friendAvatar = null) { 
             selectedGameType = game; 
             document.getElementById('selected-game-name').innerText = game.toUpperCase(); 
             document.getElementById('mode-modal').classList.remove('hidden'); 
-            window.tempFriendData = friendPeerId ? { peerId: friendPeerId, name: friendName, avatar: friendAvatar } : null; 
+            window.tempFriendData = friendId ? { id: friendId, name: friendName, avatar: friendAvatar } : null; 
         }
         function closeModeModal() { document.getElementById('mode-modal').classList.add('hidden'); window.tempFriendData = null; }
         function selectMode(mode) { 
@@ -1312,7 +1147,7 @@
             closeModeModal(); 
             if (mode === 'bot') { startGame(selectedGameType, { name: "Bot IA", avatar: "https://ui-avatars.com/api/?name=Bot&background=333" }); } 
             else if (mode === 'friend') { 
-                if(window.tempFriendData) { sendChallenge(window.tempFriendData.peerId, window.tempFriendData.name, window.tempFriendData.avatar, selectedGameType); } 
+                if(window.tempFriendData) { sendChallenge(window.tempFriendData.id, window.tempFriendData.name, window.tempFriendData.avatar, selectedGameType); } 
                 else { alert("Sélectionne un ami en ligne."); } 
             } 
         }
@@ -1358,7 +1193,7 @@
             if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
             if(gameVars.mathTimer) clearInterval(gameVars.mathTimer);
         }
-        function addFriendFromGame() { if(currentOpponent && currentOpponent.peerId) { /* Add logic */ } }
+        function addFriendFromGame() { if(currentOpponent && currentOpponent.id) { /* Add logic */ } }
         function finishGame(win, type) { 
             if(!currentUser) return; 
             currentUser.games++; 
@@ -1375,8 +1210,15 @@
         }
 
         function sendMove(moveData) { 
-            if(currentOpponent && currentOpponent.peerId) {
-                sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData });
+            if(currentOpponent && currentOpponent.id) {
+                // Send move via Firebase for reliability
+                db.ref('games/' + currentOpponent.id).push({
+                    from: currentUser.id,
+                    type: 'game_move',
+                    moveData: moveData,
+                    game: selectedGameType,
+                    timestamp: Date.now()
+                });
                 startTurnTimer();
             }
         }
@@ -1456,13 +1298,20 @@
             gameVars.turnTimer = setTimeout(() => {
                 alert("Temps écoulé ! Tu as perdu.");
                 finishGame(false, selectedGameType);
-                sendToPeer(currentOpponent.peerId, { type: 'timeout_loss' });
+                // Send loss notification via Firebase
+                if(currentOpponent && currentOpponent.id) {
+                     db.ref('games/' + currentOpponent.id).push({
+                        from: currentUser.id,
+                        type: 'timeout_loss',
+                        timestamp: Date.now()
+                    });
+                }
             }, 10000);
         }
 
         function createPost(winner, loser, score, game) { 
             if(!winner || !loser) return; 
-            firebase.database().ref('posts').push({
+            db.ref('posts').push({
                 userId: winner.id, user: winner.name, avatar: winner.avatar, 
                 action: "a gagné contre", opponent: loser.name, score: score, game: game, 
                 likes: 0, likedBy: [], comments: {}, timestamp: Date.now()
@@ -1595,7 +1444,7 @@
                     }
                 }, 600);
             } 
-            else if (currentOpponent && currentOpponent.peerId) {
+            else if (currentOpponent && currentOpponent.id) {
                 sendMove({ type: 'ttt', index: i, value: 'X' });
             }
         }
@@ -1694,7 +1543,7 @@
             
             if(selectedMode === 'bot') {
                 setTimeout(() => botPlayC4(), 600);
-            } else if (currentOpponent && currentOpponent.peerId) {
+            } else if (currentOpponent && currentOpponent.id) {
                 sendMove({ type: 'c4', col: col, row: row, value: 'red' });
             }
         }
@@ -1791,8 +1640,13 @@
                         document.getElementById('war-result').style.color = "#eab308";
                     }
                 }, 500);
-            } else if (currentOpponent && currentOpponent.peerId) {
-                sendToPeer(currentOpponent.peerId, { type: 'war_click' });
+            } else if (currentOpponent && currentOpponent.id) {
+                // Send click via Firebase
+                db.ref('games/' + currentOpponent.id).push({
+                    from: currentUser.id,
+                    type: 'war_click',
+                    timestamp: Date.now()
+                });
                 gameVars.warOppCard = -1;
                 checkWarResult();
             }
@@ -1847,18 +1701,17 @@
         function flipMemory(i) { if(gameVars.flipped.length >= 2 || gameVars.flipped.includes(i) || gameVars.matched.includes(i)) return; gameVars.flipped.push(i); renderMemory(); if(gameVars.flipped.length === 2) { setTimeout(() => { if(gameVars.memoryCards[gameVars.flipped[0]] === gameVars.memoryCards[gameVars.flipped[1]]) { gameVars.matched.push(...gameVars.flipped); if(gameVars.matched.length === 8) finishGame(true, 'memory'); } gameVars.flipped = []; renderMemory(); }, 1000); } }
         function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
 
-        // --- CHAT (FIXED) ---
-        function openChat(peerId, name, avatar) { 
-            activeChatId = peerId; 
+        // --- CHAT (FIREBASE ONLY - NO PEERJS) ---
+        function openChat(friendId, name, avatar) { 
+            activeChatId = friendId; 
             
-            const friendName = name || (localDB.friends.find(u => u.peerId === peerId)?.name) || "Ami";
-            const friendAvatar = avatar || (localDB.friends.find(u => u.peerId === peerId)?.avatar) || "";
-
-            document.getElementById('chat-header-name').innerText = friendName; 
-            document.getElementById('chat-header-img').src = friendAvatar; 
+            document.getElementById('chat-header-name').innerText = name; 
+            document.getElementById('chat-header-img').src = avatar; 
             
             const statusEl = document.getElementById('chat-status');
-            const isOnline = !!connections[peerId];
+            const friend = localDB.friends.find(f => f.id === friendId);
+            const isOnline = friend && friend.online;
+            
             if(isOnline) { 
                 statusEl.innerText = "● En ligne"; 
                 statusEl.style.color = "#4ade80"; 
@@ -1879,42 +1732,118 @@
                 p.style.height = p.style.width;
                 bgContainer.appendChild(p);
             }
+            
             document.getElementById('chat-interface').classList.remove('hidden'); 
-            renderChatMessages(); 
+            
+            // Remove old listener if exists
+            if(chatListener) {
+                chatListener.off();
+            }
+            
+            // Create new listener for this chat
+            const chatKey = [currentUser.id, friendId].sort().join('_');
+            chatListener = db.ref('chats/' + chatKey);
+            
+            chatListener.on('value', (snapshot) => {
+                const data = snapshot.val();
+                const messages = [];
+                if(data) {
+                    Object.keys(data).forEach(key => {
+                        messages.push({ key, ...data[key] });
+                    });
+                    messages.sort((a,b) => a.time - b.time);
+                }
+                
+                const container = document.getElementById('chat-messages');
+                container.innerHTML = messages.map((m, index) => `<div class="message-bubble ${m.sender===currentUser.id?'msg-me':'msg-other'} msg-anim" style="animation-delay:${index*0.05}s">${m.text}</div>`).join('');
+                container.scrollTop = container.scrollHeight;
+            });
         }
 
-        function closeChat() { document.getElementById('chat-interface').classList.add('hidden'); activeChatId = null; }
-        function getChatKey(pid) { if(!currentUser || !pid) return ''; const ids = [currentUser.id, myPeerId, pid].filter(Boolean).sort(); return ids.join('_'); }
-        function renderChatMessages() { 
-            const key = getChatKey(activeChatId); 
-            const messages = localDB.chats[key] || []; 
-            const container = document.getElementById('chat-messages'); 
-            container.innerHTML = messages.map((m, index) => `<div class="message-bubble ${m.sender===myPeerId?'msg-me':'msg-other'} msg-anim" style="animation-delay:${index*0.05}s">${m.text}</div>`).join(''); 
-            container.scrollTop = container.scrollHeight; 
+        function closeChat() { 
+            document.getElementById('chat-interface').classList.add('hidden'); 
+            activeChatId = null; 
+            if(chatListener) {
+                chatListener.off();
+                chatListener = null;
+            }
         }
+        
         function sendMessage() { 
             const input = document.getElementById('chat-input'); 
             const text = input.value.trim(); 
             if (!text || !activeChatId) return; 
             
-            const key = getChatKey(activeChatId); 
-            if (!localDB.chats[key]) localDB.chats[key] = []; 
+            const chatKey = [currentUser.id, activeChatId].sort().join('_');
             
-            // Sauvegarder localement immédiatement
-            const msgObj = { sender: myPeerId, text: text, time: Date.now() };
-            localDB.chats[key].push(msgObj);
-            saveLocal();
+            const newMessage = {
+                sender: currentUser.id,
+                text: text,
+                time: Date.now()
+            };
+            
+            db.ref('chats/' + chatKey).push(newMessage);
             
             input.value = ''; 
-            renderChatMessages(); 
+        }
+        
+        function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
+        
+        // Listen for game moves sent to me
+        if(currentUser) {
+            db.ref('games/' + currentUser.id).on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                if(data.from !== currentUser.id) { // Ignore my own messages
+                    if(data.type === 'game_move' && currentOpponent && currentOpponent.id === data.from) {
+                        processOnlineMove(data);
+                        resetTurnTimer();
+                    } else if (data.type === 'timeout_loss' && currentOpponent && currentOpponent.id === data.from) {
+                        alert("L'adversaire a dépassé le temps imparti ! Vous gagnez.");
+                        finishGame(true, selectedGameType);
+                    } else if (data.type === 'war_click' && currentOpponent && currentOpponent.id === data.from) {
+                        handleWarOpponentClick();
+                    }
+                }
+            });
+        }
+
+        // --- NOTIFICATIONS ---
+        function showNotification(text, type, key = null) {
+            const toast = document.getElementById('notification-toast');
+            const txtEl = document.getElementById('notification-text');
+            const iconEl = document.getElementById('notif-icon');
             
-            // Envoyer au pair (avec file d'attente si nécessaire)
-            const sent = sendToPeer(activeChatId, { type: 'chat', text: text });
-            if(!sent) {
-                console.log("Message mis en file d'attente pour:", activeChatId);
+            txtEl.innerText = text;
+            iconEl.innerText = type === 'friend' ? '👋' : '🔔';
+            toast.classList.add('show');
+            
+            if(key) toast.dataset.key = key;
+            else delete toast.dataset.key;
+
+            setTimeout(() => {
+                if(toast.classList.contains('show')) toast.classList.remove('show');
+            }, 8000);
+        }
+
+        function handleNotificationClick() {
+            const toast = document.getElementById('notification-toast');
+            const key = toast.dataset.key;
+            if(key) {
+                const req = localDB.friendRequests.find(r => r.key === key);
+                if(req) {
+                    if(confirm(`Accepter la demande de ${req.fromName} ?`)) {
+                        acceptFriendRequestByKey(key, req.fromId, req.fromName, req.fromAvatar);
+                    }
+                }
+            } else {
+                closeNotification();
             }
         }
-        function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
+
+        function closeNotification(e) {
+            if(e) e.stopPropagation();
+            document.getElementById('notification-toast').classList.remove('show');
+        }
     </script>
 </body>
 </html>
