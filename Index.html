@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - ULTIMATE</title>
+    <title>HACKEN CONNECT - FINAL LOGIC</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
@@ -43,6 +43,8 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: #22c55e; color: white; }
         .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #eab308; color: white; }
+        .btn-secondary { background: #475569; color: white; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         
@@ -120,7 +122,7 @@
         .mode-option { background: var(--input); padding: 15px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
         .mode-option:hover { background: rgba(99, 102, 241, 0.2); }
 
-        /* Comments Modal - FIXED LAYOUT */
+        /* Comments Modal */
         .comments-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 80; display: flex; align-items: flex-end; }
         .comments-card { background: var(--card); width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 70vh; display: flex; flex-direction: column; animation: slideUp 0.3s; }
         .comment-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; }
@@ -179,7 +181,6 @@
                 <button onclick="closeComments()" style="background:none; border:none; color:white; font-size:20px;">✕</button>
             </div>
             <div id="comments-list" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
-            <!-- Fixed Layout: Smaller Input, Visible Button -->
             <div class="comment-input-group">
                 <input type="text" id="comment-input" placeholder="Votre commentaire..." class="comment-input">
                 <button onclick="postComment()" class="btn-small btn-primary" style="flex-shrink: 0; padding: 8px 15px;">Envoyer</button>
@@ -203,17 +204,39 @@
                         <span id="selected-code" style="font-size: 14px;">+243</span> ▼
                     </button>
                     <div id="country-list">
+                        <!-- Africa -->
                         <div class="country-option" onclick="setCountry('+243', '🇨🇩')"><span><b>+243</b> RDC</span> 🇨🇩</div>
-                        <div class="country-option" onclick="setCountry('+33', '🇫🇷')"><span><b>+33</b> France</span> 🇫🇷</div>
-                        <div class="country-option" onclick="setCountry('+228', '🇹🇬')"><span><b>+228</b> Togo</span> 🇹🇬</div>
+                        <div class="country-option" onclick="setCountry('+237', '🇨🇲')"><span><b>+237</b> Cameroun</span> 🇨🇲</div>
                         <div class="country-option" onclick="setCountry('+225', '🇨🇮')"><span><b>+225</b> Côte d'Ivoire</span> 🇨🇮</div>
                         <div class="country-option" onclick="setCountry('+221', '🇸🇳')"><span><b>+221</b> Sénégal</span> 🇸🇳</div>
-                        <div class="country-option" onclick="setCountry('+237', '🇨🇲')"><span><b>+237</b> Cameroun</span> 🇨🇲</div>
+                        <div class="country-option" onclick="setCountry('+223', '🇲🇱')"><span><b>+223</b> Mali</span> 🇲🇱</div>
+                        <div class="country-option" onclick="setCountry('+226', '🇧🇫')"><span><b>+226</b> Burkina Faso</span> 🇧🇫</div>
                         <div class="country-option" onclick="setCountry('+241', '🇬🇦')"><span><b>+241</b> Gabon</span> 🇬🇦</div>
                         <div class="country-option" onclick="setCountry('+242', '🇨🇬')"><span><b>+242</b> Congo</span> 🇨🇬</div>
                         <div class="country-option" onclick="setCountry('+229', '🇧🇯')"><span><b>+229</b> Bénin</span> 🇧🇯</div>
+                        <div class="country-option" onclick="setCountry('+228', '🇹🇬')"><span><b>+228</b> Togo</span> 🇹🇬</div>
+                        <div class="country-option" onclick="setCountry('+224', '🇬🇳')"><span><b>+224</b> Guinée</span> 🇬🇳</div>
+                        <div class="country-option" onclick="setCountry('+261', '🇲🇬')"><span><b>+261</b> Madagascar</span> 🇲🇬</div>
                         <div class="country-option" onclick="setCountry('+212', '🇲🇦')"><span><b>+212</b> Maroc</span> 🇲🇦</div>
-                        <div class="country-option" onclick="setCountry('+1', '🇺🇸')"><span><b>+1</b> USA</span> 🇺🇸</div>
+                        <div class="country-option" onclick="setCountry('+213', '🇩🇿')"><span><b>+213</b> Algérie</span> 🇩🇿</div>
+                        <div class="country-option" onclick="setCountry('+216', '🇹🇳')"><span><b>+216</b> Tunisie</span> 🇹🇳</div>
+                        <div class="country-option" onclick="setCountry('+234', '🇳🇬')"><span><b>+234</b> Nigeria</span> 🇳🇬</div>
+                        <div class="country-option" onclick="setCountry('+254', '🇰🇪')"><span><b>+254</b> Kenya</span> 🇰🇪</div>
+                        <div class="country-option" onclick="setCountry('+27', '🇿🇦')"><span><b>+27</b> Afrique du Sud</span> 🇿🇦</div>
+                        <!-- Europe -->
+                        <div class="country-option" onclick="setCountry('+33', '🇫🇷')"><span><b>+33</b> France</span> 🇫🇷</div>
+                        <div class="country-option" onclick="setCountry('+32', '🇧🇪')"><span><b>+32</b> Belgique</span> 🇧🇪</div>
+                        <div class="country-option" onclick="setCountry('+41', '🇨🇭')"><span><b>+41</b> Suisse</span> 🇨🇭</div>
+                        <div class="country-option" onclick="setCountry('+44', '🇬🇧')"><span><b>+44</b> Royaume-Uni</span> 🇬🇧</div>
+                        <div class="country-option" onclick="setCountry('+49', '🇩🇪')"><span><b>+49</b> Allemagne</span> 🇩🇪</div>
+                        <div class="country-option" onclick="setCountry('+34', '🇪🇸')"><span><b>+34</b> Espagne</span> 🇪🇸</div>
+                        <div class="country-option" onclick="setCountry('+39', '🇮🇹')"><span><b>+39</b> Italie</span> 🇮🇹</div>
+                        <div class="country-option" onclick="setCountry('+351', '🇵🇹')"><span><b>+351</b> Portugal</span> 🇵🇹</div>
+                        <!-- Others -->
+                        <div class="country-option" onclick="setCountry('+1', '🇺🇸')"><span><b>+1</b> USA/Canada</span> 🇺🇸</div>
+                        <div class="country-option" onclick="setCountry('+55', '🇧🇷')"><span><b>+55</b> Brésil</span> 🇧🇷</div>
+                        <div class="country-option" onclick="setCountry('+86', '🇨🇳')"><span><b>+86</b> Chine</span> 🇨🇳</div>
+                        <div class="country-option" onclick="setCountry('+91', '🇮🇳')"><span><b>+91</b> Inde</span> 🇮🇳</div>
                     </div>
                 </div>
                 <div style="width: 1px; height: 24px; background: #475569; margin: 0 8px;"></div>
@@ -221,6 +244,13 @@
             </div>
             <button class="btn-login" onclick="handleLogin()">CONTINUER</button>
             <p id="error-msg" style="color: #ef4444; font-size: 12px; text-align: center; margin-top: 12px; display: none;">Numéro invalide !</p>
+            
+            <!-- Note for users -->
+            <div style="margin-top: 20px; padding: 10px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.3);">
+                <p style="font-size: 11px; color: #93c5fd; text-align: center;">
+                    💡 <b>Conseil :</b> Une fois connecté, pense à changer ton nom et ajouter ta photo de profil dans l'onglet Profil !
+                </p>
+            </div>
         </div>
         <p style="margin-top: 40px; font-size: 10px; color: #475569;">BY HACKEN (Ken)</p>
     </div>
@@ -441,7 +471,7 @@
 
         // --- DATA & PEER JS ---
         let currentUser = null;
-        let localDB = { friends: [], chats: {}, friendRequests: [] }; 
+        let localDB = { friends: [], chats: [], friendRequests: [] }; 
         let selectedCode = "+243", selectedFlag = "🇨🇩";
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [], turnTimer: null, myTurn: false };
@@ -474,12 +504,9 @@
             const feedContainer = document.getElementById('feed-container');
             const emptyFeed = document.getElementById('empty-feed');
             
-            // Listen to 'posts' node, ordered by timestamp descending (newest first)
             firebase.database().ref('posts').orderByChild('timestamp').limitToLast(20).on('value', (snapshot) => {
                 feedContainer.innerHTML = '';
                 let hasPosts = false;
-                
-                // Convert to array and reverse to show newest first
                 let postsArray = [];
                 snapshot.forEach((childSnapshot) => {
                     postsArray.push({ key: childSnapshot.key, val: childSnapshot.val() });
@@ -520,21 +547,34 @@
 
         function listenToUsers() {
             const usersContainer = document.getElementById('users-container');
-            // Listen to all users, ordered by creation time (or just load all and sort client-side if no timestamp)
-            // Assuming we add a 'joinedAt' timestamp when creating user
             firebase.database().ref('users').orderByChild('joinedAt').on('value', (snapshot) => {
                 usersContainer.innerHTML = '';
                 let usersArray = [];
                 snapshot.forEach((childSnapshot) => {
                     usersArray.push(childSnapshot.val());
                 });
-                // Reverse to show newest first
                 usersArray.reverse();
 
                 usersArray.forEach(u => {
-                    if(u.id === currentUser.id) return; // Don't show self
+                    if(u.id === currentUser.id) return; 
+                    
+                    // Check if already friend or request sent/received
                     const isFriend = localDB.friends.find(f => f.id === u.id);
-                    const html = `<div class="card animate-fade" style="display:flex; justify-content:space-between; align-items:center;">
+                    const hasSentRequest = localDB.friendRequests.find(r => r.targetId === u.id && r.status === 'pending');
+                    const hasReceivedRequest = localDB.friendRequests.find(r => r.fromId === u.id && r.status === 'pending');
+
+                    let actionBtn = '';
+                    if (isFriend) {
+                        actionBtn = '<span style="color:#22c55e; font-size:12px; font-weight:bold;">✓ Ami</span>';
+                    } else if (hasSentRequest) {
+                        actionBtn = '<span style="color:#eab308; font-size:12px;">En attente...</span>';
+                    } else if (hasReceivedRequest) {
+                        actionBtn = `<button onclick="acceptFriendRequestById('${u.id}', '${u.name}')" class="btn-small btn-success">Accepter</button>`;
+                    } else {
+                        actionBtn = `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-primary">+ Ajouter</button>`;
+                    }
+
+                    const html = `<div class-fade" style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${u.avatar}" class="avatar">
                             <div>
@@ -542,8 +582,7 @@
                                 <div style="font-size:10px; color:#64748b;">Code: ${u.code || 'N/A'}</div>
                             </div>
                         </div>
-                        ${isFriend ? '<span style="color:#22c55e; font-size:12px; font-weight:bold;">✓ Ami</span>' : 
-                          `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-primary">+ Ajouter</button>`}
+                        ${actionBtn}
                     </div>`;
                     usersContainer.innerHTML += html;
                 });
@@ -593,44 +632,80 @@
             document.getElementById('comment-input').value = '';
         }
 
-        // --- FRIEND REQUEST SYSTEM ---
+        // --- FRIEND REQUEST SYSTEM (REVISED LOGIC) ---
         function sendFriendRequest(targetId, targetPeerId, targetName) {
             if(!targetId) return;
-            // Send via Firebase for reliability
+            
+            // Add to MY local list as pending sent
+            const newReq = { fromId: currentUser.id, targetId: targetId, status: 'pending', name: targetName };
+            localDB.friendRequests.push(newReq);
+            saveLocal();
+            
+            // Send to Firebase for the target to receive
             firebase.database().ref('friend_requests').push({
                 fromId: currentUser.id,
                 fromName: currentUser.name,
                 fromAvatar: currentUser.avatar,
                 targetId: targetId,
+                status: 'pending',
                 timestamp: Date.now()
             });
-            alert(`Invitation envoyée à ${targetName} !`);
+            
+            renderFriends(); // Refresh list to show "En attente"
+            alert(`Invitation envoyée à ${targetName} ! Il apparaîtra dans ta liste avec le statut "En attente".`);
         }
 
         function listenToFriendRequests() {
             firebase.database().ref('friend_requests').orderByChild('targetId').equalTo(currentUser.id).on('child_added', (snapshot) => {
                 const req = snapshot.val();
-                if(req.fromId !== currentUser.id) { // Avoid self
-                    pendingFriendRequest = { ...req, key: snapshot.key };
-                    showNotification(`👋 ${req.fromName} veut t'ajouter comme ami !`, 'friend');
+                if(req.fromId !== currentUser.id && req.status === 'pending') {
+                    // Add to my local requests if not already there
+                    if(!localDB.friendRequests.find(r => r.key === snapshot.key)) {
+                        localDB.friendRequests.push({ ...req, key: snapshot.key });
+                        saveLocal();
+                        renderFriends();
+                        showNotification(`👋 ${req.fromName} veut t'ajouter comme ami !`, 'friend', snapshot.key);
+                    }
+                }
+            });
+            
+            // Listen for updates (acceptance)
+            firebase.database().ref('friend_requests').orderByChild('fromId').equalTo(currentUser.id).on('child_changed', (snapshot) => {
+                const req = snapshot.val();
+                if(req.status === 'accepted') {
+                    // The person I added accepted me!
+                    if(!localDB.friends.find(f => f.id === req.targetId)) {
+                        localDB.friends.push({ id: req.targetId, name: req.targetName || 'Ami', avatar: req.targetAvatar || '' });
+                        saveLocal();
+                        renderFriends();
+                        alert(`${req.targetName || 'Quelqu\'un'} a accepté ta demande ! Vous êtes maintenant amis.`);
+                    }
                 }
             });
         }
 
-        function acceptFriendRequest() {
-            if(!pendingFriendRequest) return;
-            // Add to my friends
-            const newFriend = { id: pendingFriendRequest.fromId, name: pendingFriendRequest.fromName, avatar: pendingFriendRequest.fromAvatar };
-            if(!localDB.friends.find(f => f.id === newFriend.id)) {
-                localDB.friends.push(newFriend);
+        function acceptFriendRequestByKey(key, fromId, fromName, fromAvatar) {
+            // Update Firebase
+            firebase.database().ref('friend_requests/' + key).update({ status: 'accepted', targetName: currentUser.name, targetAvatar: currentUser.avatar });
+            
+            // Add to my friends locally
+            if(!localDB.friends.find(f => f.id === fromId)) {
+                localDB.friends.push({ id: fromId, name: fromName, avatar: fromAvatar });
                 saveLocal();
                 renderFriends();
             }
-            // Notify sender (optional: send a chat message or update DB)
-            firebase.database().ref('friend_requests/' + pendingFriendRequest.key).remove();
+            
             closeNotification();
-            alert(`Vous êtes maintenant amis avec ${pendingFriendRequest.fromName} !`);
-            pendingFriendRequest = null;
+            alert(`Vous êtes maintenant amis avec ${fromName} ! La conversation est disponible.`);
+        }
+        
+        // Helper for button in user list
+        function acceptFriendRequestById(targetId, targetName) {
+             // Find the request key
+             const req = localDB.friendRequests.find(r => r.fromId === targetId && r.status === 'pending');
+             if(req && req.key) {
+                 acceptFriendRequestByKey(req.key, req.fromId, req.fromName, req.fromAvatar);
+             }
         }
 
         // --- PEER JS CONNECTION ---
@@ -691,7 +766,6 @@
             } else if (data.type === 'game_move') {
                 if (currentOpponent && currentOpponent.peerId === senderId) {
                     processOnlineMove(data);
-                    // Reset timer on opponent move
                     resetTurnTimer();
                 }
             } else if (data.type === 'timeout_loss') {
@@ -703,7 +777,7 @@
         function updateFriendStatus(peerId, online) { renderFriends(); renderOnline(); }
 
         // --- NOTIFICATIONS ---
-        function showNotification(text, type) {
+        function showNotification(text, type, key = null) {
             const toast = document.getElementById('notification-toast');
             const txtEl = document.getElementById('notification-text');
             const iconEl = document.getElementById('notif-icon');
@@ -712,16 +786,25 @@
             iconEl.innerText = type === 'friend' ? '👋' : '🔔';
             toast.classList.add('show');
             
-            // Auto hide after 5s if not actioned
+            // Store key for action
+            if(key) toast.dataset.key = key;
+            else delete toast.dataset.key;
+
             setTimeout(() => {
                 if(toast.classList.contains('show')) toast.classList.remove('show');
             }, 8000);
         }
 
         function handleNotificationClick() {
-            if(pendingFriendRequest) {
-                if(confirm("Accepter cette demande d'ami ?")) {
-                    acceptFriendRequest();
+            const toast = document.getElementById('notification-toast');
+            const key = toast.dataset.key;
+            if(key) {
+                // Find request details
+                const req = localDB.friendRequests.find(r => r.key === key);
+                if(req) {
+                    if(confirm(`Accepter la demande de ${req.fromName} ?`)) {
+                        acceptFriendRequestByKey(key, req.fromId, req.fromName, req.fromAvatar);
+                    }
                 }
             } else {
                 closeNotification();
@@ -731,7 +814,6 @@
         function closeNotification(e) {
             if(e) e.stopPropagation();
             document.getElementById('notification-toast').classList.remove('show');
-            pendingFriendRequest = null;
         }
 
         // --- AUTH (FIXED PERSISTENCE) ---
@@ -758,7 +840,7 @@
                         code: 'HK-' + Math.floor(1000 + Math.random() * 9000),
                         avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", 
                         wins: 0, games: 0, peerId: null,
-                        joinedAt: Date.now() // Timestamp for sorting
+                        joinedAt: Date.now()
                     };
                     firebase.database().ref('users/' + userId).set(user);
                 }
@@ -829,24 +911,64 @@
         
         function renderFriends() { 
             const list = document.getElementById('friends-list'); 
-            if (!localDB.friends || localDB.friends.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun ami ajouté.</p>'; return; } 
-            list.innerHTML = localDB.friends.map(f => { 
-                const isOnline = !!connections[f.peerId];
+            // Combine confirmed friends and pending requests
+            let allContacts = [];
+            
+            // Add confirmed friends
+            localDB.friends.forEach(f => {
+                allContacts.push({ ...f, status: 'friend', type: 'friend' });
+            });
+            
+            // Add pending requests (received)
+            localDB.friendRequests.filter(r => r.targetId === currentUser.id && r.status === 'pending').forEach(r => {
+                if(!allContacts.find(c => c.id === r.fromId)) {
+                    allContacts.push({ id: r.fromId, name: r.fromName, avatar: r.fromAvatar, status: 'pending_received', type: 'request', key: r.key });
+                }
+            });
+
+            // Add pending sent (to show status)
+            localDB.friendRequests.filter(r => r.fromId === currentUser.id && r.status === 'pending').forEach(r => {
+                 if(!allContacts.find(c => c.id === r.targetId)) {
+                    allContacts.push({ id: r.targetId, name: r.name, status: 'pending_sent', type: 'sent' });
+                }
+            });
+
+            if (allContacts.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun contact.</p>'; return; } 
+            
+            list.innerHTML = allContacts.map(f => { 
+                const isOnline = !!connections[f.peerId] || (f.status === 'friend' && f.peerId); // Simplified online check
+                
+                let actions = '';
+                if(f.status === 'friend') {
+                    actions = `
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-primary">💬 Écrire</button>
+                        ${isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : ''}
+                    </div>`;
+                } else if (f.status === 'pending_received') {
+                    actions = `
+                    <div style="display:flex; gap:5px; flex-direction:column;">
+                        <button onclick="acceptFriendRequestByKey('${f.key}', '${f.id}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">✅ Accepter</button>
+                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-secondary">💬 Répondre</button>
+                    </div>`;
+                } else if (f.status === 'pending_sent') {
+                    actions = `<span style="font-size:10px; color:#eab308;">⏳ Invitation envoyée</span>`;
+                }
+
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="position:relative;">
-                            <img src="${f.avatar}" class="avatar">
-                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+                            <img src="${f.avatar || 'https://ui-avatars.com/api/?name='+f.name}" class="avatar">
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline && f.status==='friend' ? '#22c55e' : '#64748b'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
                         <div>
                             <b style="font-size:15px; display:block;">${f.name}</b>
-                            <span style="font-size:10px; color:${isOnline ? '#22c55e' : '#ef4444'}">${isOnline ? 'En ligne' : 'Hors ligne'}</span>
+                            <span style="font-size:10px; color:${f.status==='friend' ? (isOnline ? '#22c55e' : '#94a3b8') : '#eab308'}">
+                                ${f.status==='friend' ? (isOnline ? 'En ligne' : 'Hors ligne') : (f.status==='pending_received' ? 'Veut t\'ajouter' : 'En attente')}
+                            </span>
                         </div>
                     </div>
-                    <div style="display:flex; gap:5px;">
-                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-primary">💬</button>
-                        ${isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : '<span style="font-size:10px; color:#64748b;">Offline</span>'}
-                    </div>
+                    ${actions}
                 </div>`; 
             }).join(''); 
         }
@@ -856,28 +978,46 @@
             const list = document.getElementById('friends-list'); 
             if (q.length < 2) { renderFriends(); return; } 
             
-            let matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q) || (u.code && u.code.toLowerCase().includes(q)));
-            
+            // Search in local contacts first
+            let matches = [];
+            // Search friends
+            localDB.friends.forEach(f => { if(f.name.toLowerCase().includes(q)) matches.push({...f, status:'friend', type:'friend'}); });
+            // Search requests
+            localDB.friendRequests.forEach(r => {
+                if(r.fromName && r.fromName.toLowerCase().includes(q) && r.targetId === currentUser.id) matches.push({id:r.fromId, name:r.fromName, avatar:r.fromAvatar, status:'pending_received', type:'request', key:r.key});
+                if(r.name && r.name.toLowerCase().includes(q) && r.fromId === currentUser.id) matches.push({id:r.targetId, name:r.name, status:'pending_sent', type:'sent'});
+            });
+
             if(matches.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Recherche en cours...</p>';
+                list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Recherche globale en cours...</p>';
                 firebase.database().ref('users').orderByChild('code').equalTo(q.toUpperCase()).once('value', snapshot => {
                     const globalMatches = [];
                     snapshot.forEach(child => {
                         const u = child.val();
-                        if(u.id !== currentUser.id) globalMatches.push(u);
+                        if(u.id !== currentUser.id && !localDB.friends.find(f=>f.id===u.id)) globalMatches.push(u);
                     });
                     renderSearchResults(globalMatches, list);
                 });
                 return;
             }
-            renderSearchResults(matches, list);
+            renderSearchResults(matches, list, true);
         }
 
-        function renderSearchResults(matches, listElement) {
+        function renderSearchResults(matches, listElement, isLocal = false) {
             if(matches.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun résultat trouvé.</p>'; return; }
             listElement.innerHTML = matches.map(u => { 
                 const isFriend = localDB.friends.find(f => f.id === u.id);
                 const isOnline = !!connections[u.peerId];
+                
+                let action = '';
+                if(isLocal) {
+                     if(u.status === 'friend') action = '<span style="color:#22c55e;">✓ Ami</span>';
+                     else if(u.status === 'pending_received') action = `<button onclick="acceptFriendRequestByKey('${u.key}', '${u.id}', '${u.name}', '${u.avatar}')" class="btn-small btn-success">Accepter</button>`;
+                     else action = '<span style="color:#eab308;">En attente</span>';
+                } else {
+                    action = `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-success">+ Ajouter</button>`;
+                }
+
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="position:relative;">
@@ -889,7 +1029,7 @@
                             ${u.code ? `<div style="font-size:10px; color:#64748b;">Code: ${u.code}</div>` : ''}
                         </div>
                     </div>
-                    ${isFriend ? '<span style="color:#94a3b8; font-size:12px;">✓ Ami</span>' : `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-success">+ Ajouter</button>`}
+                    ${action}
                 </div>`; 
             }).join(''); 
         }
@@ -906,10 +1046,8 @@
                     let friendData = { peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" };
                     snapshot.forEach(child => { friendData = child.val(); friendData.peerId = pid; });
                     
-                    localDB.friends.push(friendData);
-                    saveLocal();
-                    renderFriends();
-                    alert("Ami ajouté !");
+                    // Send request
+                    sendFriendRequest(friendData.id, pid, friendData.name);
                     conn.close();
                 });
             });
@@ -952,7 +1090,7 @@
                     const ids = key.split('_');
                     const otherId = ids.find(id => id !== currentUser.id && id !== myPeerId);
                     if(!otherId) return '';
-                    const friend = localDB.friends.find(f => f.peerId === otherId);
+                    const friend = localDB.friends.find(f => f.id === otherId || f.peerId === otherId);
                     if(!friend) return '';
                     const msgs = localDB.chats[key];
                     const lastMsg = msgs[msgs.length-1];
@@ -1043,7 +1181,6 @@
         function sendMove(moveData) { 
             if(currentOpponent && currentOpponent.peerId) {
                 sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData });
-                // Start timer for opponent
                 startTurnTimer();
             }
         }
@@ -1055,24 +1192,18 @@
             
             if(container) {
                 container.classList.remove('hidden');
-                // Reset animation
                 bar.classList.remove('timer-animate');
-                void bar.offsetWidth; // trigger reflow
+                void bar.offsetWidth; 
                 bar.classList.add('timer-animate');
             }
 
             gameVars.turnTimer = setTimeout(() => {
-                // Time's up! Send loss signal if I was supposed to play, or win if opponent timed out
-                // In this simple implementation, if I receive a move, I reset. If I don't send a move in 10s, I lose.
-                // But here we are starting the timer AFTER I sent a move, waiting for opponent.
-                // Actually, the timer should run when it's MY turn.
-                // Let's simplify: When I receive a move, I start MY timer.
+                // Time's up logic handled in processOnlineMove or local timeout
             }, 10000);
         }
         
         function resetTurnTimer() {
              if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
-             // Logic handled in handleData
         }
 
         function processOnlineMove(data) {
@@ -1082,14 +1213,12 @@
                     gameVars.tttBoard[index] = value;
                     renderTTT();
                     if(checkWin(value)) {
-                        if(value === 'O') finishGame(false, 'tictactoe'); // Opponent won
+                        if(value === 'O') finishGame(false, 'tictactoe'); 
                         else finishGame(true, 'tictactoe');
                         gameVars.tttActive = false;
                     } else {
-                        // My turn
                         gameVars.myTurn = true;
                         document.getElementById('ttt-status').innerText = "À TOI DE JOUER !";
-                        // Start 10s timer for ME
                         const bar = document.getElementById('ttt-timer-bar');
                         const container = document.getElementById('ttt-timer-container');
                         if(container) {
@@ -1121,7 +1250,6 @@
         function initMath() { const n1 = Math.floor(Math.random() * 20) + 1, n2 = Math.floor(Math.random() * 20) + 1; gameVars.mathAns = n1 + n2; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; const keys = ['1','2','3','C','4','5','6','0','7','8','9','=']; const container = document.getElementById('math-keys'); container.innerHTML = ''; let currentVal = ''; keys.forEach(k => { const btn = document.createElement('button'); btn.innerText = k; btn.className = 'math-key ' + (k === '=' ? 'eq' : (k === 'C' ? 'op' : '')); btn.onclick = () => { if (k === '=') { if (parseInt(currentVal) === gameVars.mathAns) finishGame(true, 'math'); else { alert("Faux !"); initMath(); } } else if (k === 'C') { currentVal = ''; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; } else { currentVal += k; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ${currentVal}`; } }; container.appendChild(btn); }); }
         // TTT
         function initTTT() { gameVars.tttBoard = ['', '', '', '', '', '', '', '', '']; gameVars.tttActive = true; gameVars.myTurn = true; document.getElementById('ttt-status').innerText = "À TOI (X)"; document.getElementById('ttt-timer-container').classList.remove('hidden'); renderTTT(); 
-            // Start initial timer
             const bar = document.getElementById('ttt-timer-bar');
             bar.classList.remove('timer-animate'); void bar.offsetWidth; bar.classList.add('timer-animate');
             gameVars.turnTimer = setTimeout(() => { alert("Temps écoulé !"); finishGame(false, 'tictactoe'); }, 10000);
