@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - FINAL FIX</title>
+    <title>HACKEN CONNECT - ULTIMATE</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
@@ -25,16 +25,19 @@
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
         @keyframes bgMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         @keyframes floatParticle { 0% { transform: translateY(0) rotate(0deg); opacity: 0.5; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
+        @keyframes timerBar { 0% { width: 100%; background: #22c55e; } 100% { width: 0%; background: #ef4444; } }
         
         .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .msg-anim { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .timer-animate { animation: timerBar 10s linear forwards; }
         
         /* Utilities */
         .hidden { display: none !important; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
         .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; }
-        .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(5px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
+        .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(5px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
         .btn-small { padding: 8px 16px; border-radius: 12px; border: none; font-weight: 700; font-size: 12px; cursor: pointer; transition: transform 0.2s; }
         .btn-small:active { transform: scale(0.95); }
         .btn-primary { background: var(--primary); color: white; }
@@ -47,7 +50,6 @@
         .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at top right, #1e1b4b, #0f172a); }
         .login-box { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 24px; padding: 30px; width: 100%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); }
         .input-group { background: var(--input); border-radius: 16px; padding: 6px; display: flex; align-items: center; margin-bottom: 20px; position: relative; }
-        /* Fix Button Layout */
         .search-group { display: flex; gap: 10px; align-items: center; background: var(--input); border-radius: 12px; padding: 5px; margin-bottom: 15px; }
         .search-input { flex: 1; background: transparent; border: none; color: white; outline: none; padding: 8px 12px; font-size: 14px; }
         .icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
@@ -109,7 +111,7 @@
         .msg-other { align-self: flex-start; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); color: white; border-bottom-left-radius: 2px; }
         
         /* Notification */
-        .notification-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 15px 25px; border-radius: 50px; z-index: 100; transition: transform 0.4s; }
+        .notification-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 15px 25px; border-radius: 50px; z-index: 100; transition: transform 0.4s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .notification-toast.show { transform: translateX(-50%) translateY(0); }
         
         /* Mode Modal */
@@ -125,7 +127,7 @@
         .comment-user { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
         .comment-text { font-size: 13px; color: #e2e8f0; }
         .comment-input-group { display: flex; gap: 10px; margin-top: 10px; }
-        .comment-input { flex: 1; background: var(--input); border: none; border-radius: 12px; padding: 10px; color: white; outline: none; }
+        .comment-input { flex: 1; background: var(--input); border: none; border-radius: 12px; padding: 10px; color: white; outline: none; font-size: 13px; }
         
         /* Connection Status */
         .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; z-index: 90; display: flex; align-items: center; gap: 5px; }
@@ -135,6 +137,10 @@
         
         /* Badge */
         .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        
+        /* Timer Bar for Games */
+        .timer-container { width: 100%; height: 6px; background: #334155; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+        .timer-bar { height: 100%; width: 100%; transition: width 0.1s linear; }
     </style>
 </head>
 <body>
@@ -145,10 +151,13 @@
         <span id="conn-text">Connexion...</span>
     </div>
 
-    <!-- NOTIFICATION -->
-    <div id="notification-toast" class="notification-toast" onclick="acceptChallenge()">
-        <span>⚔️</span> <span id="notification-text">Défi reçu !</span>
-        <button style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:50%; width:20px; height:20px; margin-left:10px;" onclick="closeNotification()">✕</button>
+    <!-- NOTIFICATION TOAST -->
+    <div id="notification-toast" class="notification-toast">
+        <div style="display:flex; align-items:center; gap:10px; width:100%;" onclick="handleNotificationClick()">
+            <span id="notif-icon" style="font-size:20px;">🔔</span> 
+            <span id="notification-text" style="flex:1; font-weight:600;">Notification</span>
+            <button style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;" onclick="closeNotification(event)">✕</button>
+        </div>
     </div>
 
     <!-- MODE SELECTION -->
@@ -170,10 +179,10 @@
                 <button onclick="closeComments()" style="background:none; border:none; color:white; font-size:20px;">✕</button>
             </div>
             <div id="comments-list" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
-            <!-- Fixed Layout for Input -->
+            <!-- Fixed Layout: Smaller Input, Visible Button -->
             <div class="comment-input-group">
-                <input type="text" id="comment-input" placeholder="Écrire un commentaire..." class="comment-input">
-                <button onclick="postComment()" class="btn-small btn-primary" style="flex-shrink: 0;">Envoyer</button>
+                <input type="text" id="comment-input" placeholder="Votre commentaire..." class="comment-input">
+                <button onclick="postComment()" class="btn-small btn-primary" style="flex-shrink: 0; padding: 8px 15px;">Envoyer</button>
             </div>
         </div>
     </div>
@@ -233,21 +242,37 @@
             </button>
         </div>
 
+        <!-- VIEW: HOME (Feed + Users) -->
         <div id="view-home" class="view active">
-            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Activité Mondiale</h2>
-            <div id="feed-container">
-                <div style="text-align:center; padding: 20px; color: #64748b;">Chargement des actualités...</div>
+            <!-- Tabs for Feed / Users -->
+            <div style="display:flex; gap:10px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;">
+                <button onclick="showHomeTab('feed')" id="tab-feed" class="btn-small btn-primary" style="white-space:nowrap;">📰 Actualités</button>
+                <button onclick="showHomeTab('users')" id="tab-users" class="btn-small" style="background:var(--input); color:white; white-space:nowrap;">👥 Utilisateurs</button>
             </div>
-            <div id="empty-feed" class="hidden text-center" style="margin-top: 60px; opacity: 0.5;">
-                <div style="font-size: 50px;">🏆</div>
-                <p>Aucune activité.</p>
-                <button onclick="switchView('arcade')" class="text-primary font-bold mt-6" style="background:none; border:none; cursor:pointer;">ALLER JOUER →</button>
+
+            <!-- Feed Section -->
+            <div id="home-feed-section">
+                <div id="feed-container">
+                    <div style="text-align:center; padding: 20px; color: #64748b;">Chargement des actualités...</div>
+                </div>
+                <div id="empty-feed" class="hidden text-center" style="margin-top: 60px; opacity: 0.5;">
+                    <div style="font-size: 50px;">🏆</div>
+                    <p>Aucune activité.</p>
+                    <button onclick="switchView('arcade')" class="text-primary font-bold mt-6" style="background:none; border:none; cursor:pointer;">ALLER JOUER →</button>
+                </div>
+            </div>
+
+            <!-- Users Section (New Accounts Descending) -->
+            <div id="home-users-section" class="hidden">
+                <div id="users-container">
+                    <div style="text-align:center; padding: 20px; color: #64748b;">Chargement des utilisateurs...</div>
+                </div>
             </div>
         </div>
 
         <div id="view-arcade" class="view">
             <h2 class="font-bold" style="font-size: 24px; margin-bottom: 10px;">Arcade Zone</h2>
-            <p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">8 Jeux en temps réel.</p>
+            <p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">8 Jeux en temps réel (10s pour jouer !)</p>
             <div class="grid-4">
                 <div class="card text-center animate-fade" onclick="openModeModal('math')" style="cursor: pointer;"><div style="font-size: 30px;">🧠</div><div class="font-bold" style="font-size: 14px;">Math</div></div>
                 <div class="card text-center animate-fade" onclick="openModeModal('tictactoe')" style="cursor: pointer;"><div style="font-size: 30px;">⭕</div><div class="font-bold" style="font-size: 14px;">Morpion</div></div>
@@ -344,7 +369,15 @@
                 <button onclick="closeGame()" class="btn-small btn-danger" style="margin-top: 20px;">Annuler</button>
             </div>
             <div id="game-math" class="hidden text-center" style="width: 100%;"><h2 id="math-problem" style="font-size: 48px; margin-bottom: 30px; font-weight: 800;">10 + 5 = ?</h2><div class="math-grid" id="math-keys"></div></div>
-            <div id="game-ttt" class="hidden text-center"><div id="ttt-board" class="grid-2" style="grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 250px; margin: 0 auto;"></div><p id="ttt-status" style="margin-top: 20px; color: #94a3b8; font-weight: 600;">À TOI</p><button onclick="resetTTT()" class="btn-small" style="background: rgba(255,255,255,0.1); color: white; margin-top: 15px;">REJOUER</button></div>
+            <div id="game-ttt" class="hidden text-center" style="width:100%;">
+                <div id="ttt-board" class="grid-2" style="grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 250px; margin: 0 auto;"></div>
+                <p id="ttt-status" style="margin-top: 20px; color: #94a3b8; font-weight: 600;">À TOI</p>
+                <!-- Timer Bar -->
+                <div class="timer-container hidden" id="ttt-timer-container">
+                    <div id="ttt-timer-bar" class="timer-bar timer-animate"></div>
+                </div>
+                <button onclick="resetTTT()" class="btn-small" style="background: rgba(255,255,255,0.1); color: white; margin-top: 15px;">REJOUER</button>
+            </div>
             <div id="game-speed" class="hidden text-center"><div style="font-size: 14px; color: #94a3b8; margin-bottom: 10px;">Temps restant</div><div id="speed-timer" style="font-size: 60px; font-weight: 800; color: #ef4444; margin-bottom: 30px;">5.00</div><button id="click-btn" class="click-btn" ontouchstart="handleSpeedClick(event)" onmousedown="handleSpeedClick(event)"><span>TAP!</span><span id="score-display" style="font-size: 40px; margin-top: 10px;">0</span></button><button id="start-speed-btn" onclick="startSpeedGame()" class="btn-small btn-primary" style="margin-top: 30px; padding: 15px 40px;">COMMENCER</button></div>
             <div id="game-rps" class="hidden text-center"><h3 class="font-bold" style="margin-bottom: 20px;">Pierre Feuille Ciseaux</h3><div style="display:flex; gap:15px; justify-content:center;"><button class="rps-btn" onclick="playRPS('rock')">🪨</button><button class="rps-btn" onclick="playRPS('paper')">📄</button><button class="rps-btn" onclick="playRPS('scissors')">✂️</button></div><p id="rps-result" style="margin-top: 20px; font-weight: bold; min-height: 24px;"></p></div>
             <div id="game-guess" class="hidden text-center"><h3 class="font-bold" style="margin-bottom: 10px;">Devine le nombre (1-100)</h3><input type="number" id="guess-input" style="padding:10px; border-radius:8px; border:none; width:100px; text-align:center; font-size:18px;" placeholder="?"><button onclick="checkGuess()" class="btn-small btn-primary" style="margin-top:10px;">Valider</button><p id="guess-hint" style="margin-top:15px; color:#94a3b8;"></p></div>
@@ -408,28 +441,27 @@
 
         // --- DATA & PEER JS ---
         let currentUser = null;
-        let localDB = { friends: [], chats: {} }; 
+        let localDB = { friends: [], chats: {}, friendRequests: [] }; 
         let selectedCode = "+243", selectedFlag = "🇨🇩";
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
-        let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [] };
+        let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [], turnTimer: null, myTurn: false };
         
         let peer = null;
         let myPeerId = null;
         let connections = {}; 
         let pendingChallenge = null;
         let unreadCounts = {};
+        let pendingFriendRequest = null;
 
         // --- INIT ---
         window.onload = function() {
             const savedLocal = localStorage.getItem('hacken_local');
             if (savedLocal) localDB = JSON.parse(savedLocal);
             
-            // Check if user was logged in before
             const lastPhone = sessionStorage.getItem('hacken_last_phone');
             if (lastPhone) {
-                // Auto-login with last phone
                 document.getElementById('phone-input').value = lastPhone.replace(selectedCode, '');
-                handleLogin(true); // True = silent login attempt
+                handleLogin(true);
             }
 
             document.getElementById('selected-code').innerText = selectedCode;
@@ -442,14 +474,22 @@
             const feedContainer = document.getElementById('feed-container');
             const emptyFeed = document.getElementById('empty-feed');
             
-            firebase.database().ref('posts').limitToLast(20).on('value', (snapshot) => {
+            // Listen to 'posts' node, ordered by timestamp descending (newest first)
+            firebase.database().ref('posts').orderByChild('timestamp').limitToLast(20).on('value', (snapshot) => {
                 feedContainer.innerHTML = '';
                 let hasPosts = false;
                 
+                // Convert to array and reverse to show newest first
+                let postsArray = [];
                 snapshot.forEach((childSnapshot) => {
+                    postsArray.push({ key: childSnapshot.key, val: childSnapshot.val() });
+                });
+                postsArray.reverse();
+
+                postsArray.forEach(item => {
                     hasPosts = true;
-                    const p = childSnapshot.val();
-                    const postId = childSnapshot.key;
+                    const p = item.val;
+                    const postId = item.key;
                     const isLiked = p.likedBy && p.likedBy.includes(currentUser.id);
                     
                     const html = `<div class="card animate-fade">
@@ -475,6 +515,38 @@
                 });
                 
                 if(!hasPosts) { emptyFeed.classList.remove('hidden'); } else { emptyFeed.classList.add('hidden'); }
+            });
+        }
+
+        function listenToUsers() {
+            const usersContainer = document.getElementById('users-container');
+            // Listen to all users, ordered by creation time (or just load all and sort client-side if no timestamp)
+            // Assuming we add a 'joinedAt' timestamp when creating user
+            firebase.database().ref('users').orderByChild('joinedAt').on('value', (snapshot) => {
+                usersContainer.innerHTML = '';
+                let usersArray = [];
+                snapshot.forEach((childSnapshot) => {
+                    usersArray.push(childSnapshot.val());
+                });
+                // Reverse to show newest first
+                usersArray.reverse();
+
+                usersArray.forEach(u => {
+                    if(u.id === currentUser.id) return; // Don't show self
+                    const isFriend = localDB.friends.find(f => f.id === u.id);
+                    const html = `<div class="card animate-fade" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${u.avatar}" class="avatar">
+                            <div>
+                                <b style="font-size:15px;">${u.name}</b>
+                                <div style="font-size:10px; color:#64748b;">Code: ${u.code || 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${isFriend ? '<span style="color:#22c55e; font-size:12px; font-weight:bold;">✓ Ami</span>' : 
+                          `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-primary">+ Ajouter</button>`}
+                    </div>`;
+                    usersContainer.innerHTML += html;
+                });
             });
         }
 
@@ -521,6 +593,46 @@
             document.getElementById('comment-input').value = '';
         }
 
+        // --- FRIEND REQUEST SYSTEM ---
+        function sendFriendRequest(targetId, targetPeerId, targetName) {
+            if(!targetId) return;
+            // Send via Firebase for reliability
+            firebase.database().ref('friend_requests').push({
+                fromId: currentUser.id,
+                fromName: currentUser.name,
+                fromAvatar: currentUser.avatar,
+                targetId: targetId,
+                timestamp: Date.now()
+            });
+            alert(`Invitation envoyée à ${targetName} !`);
+        }
+
+        function listenToFriendRequests() {
+            firebase.database().ref('friend_requests').orderByChild('targetId').equalTo(currentUser.id).on('child_added', (snapshot) => {
+                const req = snapshot.val();
+                if(req.fromId !== currentUser.id) { // Avoid self
+                    pendingFriendRequest = { ...req, key: snapshot.key };
+                    showNotification(`👋 ${req.fromName} veut t'ajouter comme ami !`, 'friend');
+                }
+            });
+        }
+
+        function acceptFriendRequest() {
+            if(!pendingFriendRequest) return;
+            // Add to my friends
+            const newFriend = { id: pendingFriendRequest.fromId, name: pendingFriendRequest.fromName, avatar: pendingFriendRequest.fromAvatar };
+            if(!localDB.friends.find(f => f.id === newFriend.id)) {
+                localDB.friends.push(newFriend);
+                saveLocal();
+                renderFriends();
+            }
+            // Notify sender (optional: send a chat message or update DB)
+            firebase.database().ref('friend_requests/' + pendingFriendRequest.key).remove();
+            closeNotification();
+            alert(`Vous êtes maintenant amis avec ${pendingFriendRequest.fromName} !`);
+            pendingFriendRequest = null;
+        }
+
         // --- PEER JS CONNECTION ---
         function initPeer() {
             const statusEl = document.getElementById('conn-status');
@@ -532,23 +644,16 @@
             peer.on('open', (id) => {
                 myPeerId = id;
                 currentUser.peerId = id;
-                updateUser(); // Save peerID to Firebase
+                updateUser(); 
                 document.getElementById('profile-peer-id').innerText = id;
                 statusEl.className = 'connection-status status-online';
                 statusText.innerText = 'En Ligne';
                 
-                firebase.database().ref('users/' + myPeerId).set({
-                    name: currentUser.name, avatar: currentUser.avatar, online: true, code: currentUser.code
+                firebase.database().ref('users/' + currentUser.id).update({
+                    name: currentUser.name, avatar: currentUser.avatar, online: true, code: currentUser.code, peerId: id
                 });
                 
-                firebase.database().ref('challenges').orderByChild('targetId').equalTo(myPeerId).on('child_added', (snapshot) => {
-                    const data = snapshot.val();
-                    if(!data.accepted && !data.declined) {
-                        pendingChallenge = { ...data, key: snapshot.key };
-                        document.getElementById('notification-text').innerText = `${data.fromName} veut te défier aux ${data.game} !`;
-                        document.getElementById('notification-toast').classList.add('show');
-                    }
-                });
+                listenToFriendRequests();
             });
 
             peer.on('connection', (conn) => { setupConnection(conn); });
@@ -584,27 +689,49 @@
                     updateBadges();
                 }
             } else if (data.type === 'game_move') {
-                if (currentOpponent && currentOpponent.peerId === senderId) processOnlineMove(data);
+                if (currentOpponent && currentOpponent.peerId === senderId) {
+                    processOnlineMove(data);
+                    // Reset timer on opponent move
+                    resetTurnTimer();
+                }
+            } else if (data.type === 'timeout_loss') {
+                alert("L'adversaire a dépassé le temps imparti ! Vous gagnez.");
+                finishGame(true, 'tictactoe');
             }
         }
 
         function updateFriendStatus(peerId, online) { renderFriends(); renderOnline(); }
 
         // --- NOTIFICATIONS ---
-        function closeNotification() { document.getElementById('notification-toast').classList.remove('show'); pendingChallenge = null; }
-        function acceptChallenge() {
-            if(pendingChallenge) {
-                firebase.database().ref('challenges/' + pendingChallenge.key).update({ accepted: true });
-                startGame(pendingChallenge.game, { name: pendingChallenge.fromName, avatar: pendingChallenge.fromAvatar, peerId: pendingChallenge.fromPeerId });
-                document.getElementById('notification-toast').classList.remove('show');
-                pendingChallenge = null;
+        function showNotification(text, type) {
+            const toast = document.getElementById('notification-toast');
+            const txtEl = document.getElementById('notification-text');
+            const iconEl = document.getElementById('notif-icon');
+            
+            txtEl.innerText = text;
+            iconEl.innerText = type === 'friend' ? '👋' : '🔔';
+            toast.classList.add('show');
+            
+            // Auto hide after 5s if not actioned
+            setTimeout(() => {
+                if(toast.classList.contains('show')) toast.classList.remove('show');
+            }, 8000);
+        }
+
+        function handleNotificationClick() {
+            if(pendingFriendRequest) {
+                if(confirm("Accepter cette demande d'ami ?")) {
+                    acceptFriendRequest();
+                }
+            } else {
+                closeNotification();
             }
         }
-        function sendChallenge(targetPeerId, targetName, targetAvatar, game) {
-            firebase.database().ref('challenges').push({
-                fromName: currentUser.name, fromAvatar: currentUser.avatar, fromPeerId: myPeerId,
-                targetId: targetPeerId, game: game, accepted: false, declined: false, timestamp: Date.now()
-            }).then(() => { alert(`Défi envoyé à ${targetName} !`); closeModeModal(); });
+
+        function closeNotification(e) {
+            if(e) e.stopPropagation();
+            document.getElementById('notification-toast').classList.remove('show');
+            pendingFriendRequest = null;
         }
 
         // --- AUTH (FIXED PERSISTENCE) ---
@@ -618,39 +745,33 @@
             if (!silent) document.getElementById('error-msg').style.display = 'none';
             
             const fullPhone = selectedCode + (phoneInput || '');
-            
-            // Use phone as unique ID key in Firebase
             const userId = fullPhone.replace(/[^a-zA-Z0-9]/g, '_'); 
             
             firebase.database().ref('users/' + userId).once('value', (snapshot) => {
                 let user = snapshot.val();
                 
                 if (!user) {
-                    // Create new user
                     user = { 
                         id: userId, 
                         name: "Joueur " + (phoneInput.slice(-3) || 'New'), 
                         phone: fullPhone, 
                         code: 'HK-' + Math.floor(1000 + Math.random() * 9000),
                         avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", 
-                        wins: 0, games: 0, peerId: null 
+                        wins: 0, games: 0, peerId: null,
+                        joinedAt: Date.now() // Timestamp for sorting
                     };
                     firebase.database().ref('users/' + userId).set(user);
                 }
                 
                 currentUser = user;
                 sessionStorage.setItem('hacken_user', JSON.stringify(user));
-                sessionStorage.setItem('hacken_last_phone', fullPhone); // Save for auto-login
+                sessionStorage.setItem('hacken_last_phone', fullPhone);
                 
                 if (!silent) {
                     initPeer(); 
                     showApp();
                 } else {
-                    // Silent login logic
-                    if(currentUser) {
-                         initPeer(); 
-                         showApp();
-                    }
+                    if(currentUser) { initPeer(); showApp(); }
                 }
             });
         }
@@ -662,6 +783,22 @@
             renderFriends(); 
             renderOnline(); 
             listenToGlobalPosts();
+            listenToUsers();
+        }
+
+        function showHomeTab(tab) {
+            document.getElementById('tab-feed').className = tab === 'feed' ? 'btn-small btn-primary' : 'btn-small';
+            document.getElementById('tab-feed').style.background = tab === 'feed' ? 'var(--primary)' : 'var(--input)';
+            document.getElementById('tab-users').className = tab === 'users' ? 'btn-small btn-primary' : 'btn-small';
+            document.getElementById('tab-users').style.background = tab === 'users' ? 'var(--primary)' : 'var(--input)';
+            
+            if(tab === 'feed') {
+                document.getElementById('home-feed-section').classList.remove('hidden');
+                document.getElementById('home-users-section').classList.add('hidden');
+            } else {
+                document.getElementById('home-feed-section').classList.add('hidden');
+                document.getElementById('home-users-section').classList.remove('hidden');
+            }
         }
         
         function updateUI() { 
@@ -677,8 +814,7 @@
         
         function logout() { 
             if(peer) peer.destroy(); 
-            if(myPeerId) firebase.database().ref('users/' + myPeerId).remove();
-            // Keep session for auto-login next time
+            if(myPeerId) firebase.database().ref('users/' + currentUser.id).update({ online: false });
             location.reload(); 
         }
 
@@ -715,16 +851,13 @@
             }).join(''); 
         }
         
-        // FIXED SEARCH (Name AND Code)
         function searchUsers() { 
             const q = document.getElementById('search-input').value.toLowerCase().trim(); 
             const list = document.getElementById('friends-list'); 
             if (q.length < 2) { renderFriends(); return; } 
             
-            // Search in friends list first
             let matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q) || (u.code && u.code.toLowerCase().includes(q)));
             
-            // If no match in friends, search globally in Firebase users
             if(matches.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Recherche en cours...</p>';
                 firebase.database().ref('users').orderByChild('code').equalTo(q.toUpperCase()).once('value', snapshot => {
@@ -733,20 +866,17 @@
                         const u = child.val();
                         if(u.id !== currentUser.id) globalMatches.push(u);
                     });
-                    // Also search by name roughly (Firebase limited without Algolia, so we do basic check if loaded)
-                    // For demo, we rely on Code search which is exact
                     renderSearchResults(globalMatches, list);
                 });
                 return;
             }
-            
             renderSearchResults(matches, list);
         }
 
         function renderSearchResults(matches, listElement) {
             if(matches.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun résultat trouvé.</p>'; return; }
             listElement.innerHTML = matches.map(u => { 
-                const isFriend = localDB.friends.find(f => f.peerId === u.peerId || f.id === u.id);
+                const isFriend = localDB.friends.find(f => f.id === u.id);
                 const isOnline = !!connections[u.peerId];
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -759,7 +889,7 @@
                             ${u.code ? `<div style="font-size:10px; color:#64748b;">Code: ${u.code}</div>` : ''}
                         </div>
                     </div>
-                    ${isFriend ? '<span style="color:#94a3b8; font-size:12px;">✓ Ami</span>' : `<button onclick="addFriendByObject('${u.id}', '${u.peerId}', '${u.name}', '${u.avatar}')" class="btn-small btn-success">+ Ajouter</button>`}
+                    ${isFriend ? '<span style="color:#94a3b8; font-size:12px;">✓ Ami</span>' : `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-success">+ Ajouter</button>`}
                 </div>`; 
             }).join(''); 
         }
@@ -772,7 +902,6 @@
             
             const conn = peer.connect(pid);
             conn.on('open', () => {
-                // Fetch user info from Firebase to save properly
                 firebase.database().ref('users').orderByChild('peerId').equalTo(pid).once('value', snapshot => {
                     let friendData = { peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" };
                     snapshot.forEach(child => { friendData = child.val(); friendData.peerId = pid; });
@@ -785,14 +914,6 @@
                 });
             });
             conn.on('error', () => alert("ID invalide ou hors ligne."));
-        }
-
-        function addFriendByObject(id, peerId, name, avatar) {
-            if(localDB.friends.find(f => f.id === id)) { alert("Déjà ami !"); return; }
-            localDB.friends.push({ id: id, peerId: peerId, name: name, avatar: avatar });
-            saveLocal();
-            renderFriends();
-            alert("Ami ajouté !");
         }
         
         function updateUser() { if(!currentUser) return; firebase.database().ref('users/' + currentUser.id).update(currentUser); sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
@@ -874,7 +995,7 @@
             } 
         }
 
-        // --- GAMES (Simplified) ---
+        // --- GAMES (WITH 10S TIMER) ---
         function startGame(type, opponent) {
             const modal = document.getElementById('game-modal'); modal.classList.remove('hidden');
             currentOpponent = opponent;
@@ -885,7 +1006,12 @@
             document.querySelectorAll('.modal-body > div:not(#game-waiting)').forEach(d => d.classList.add('hidden'));
 
             if (type === 'math') { document.getElementById('game-title').innerText = "MATH"; document.getElementById('game-math').classList.remove('hidden'); initMath(); }
-            else if (type === 'tictactoe') { document.getElementById('game-title').innerText = "MORPION"; document.getElementById('game-ttt').classList.remove('hidden'); initTTT(); }
+            else if (type === 'tictactoe') { 
+                document.getElementById('game-title').innerText = "MORPION"; 
+                document.getElementById('game-ttt').classList.remove('hidden'); 
+                document.getElementById('ttt-timer-container').classList.add('hidden');
+                initTTT(); 
+            }
             else if (type === 'speed') { document.getElementById('game-title').innerText = "SPEED"; document.getElementById('game-speed').classList.remove('hidden'); resetSpeedGame(); }
             else if (type === 'rps') { document.getElementById('game-title').innerText = "PFC"; document.getElementById('game-rps').classList.remove('hidden'); document.getElementById('rps-result').innerText = ""; }
             else if (type === 'guess') { document.getElementById('game-title').innerText = "DEVINE"; document.getElementById('game-guess').classList.remove('hidden'); gameVars.guessNum = Math.floor(Math.random() * 100) + 1; document.getElementById('guess-hint').innerText = ""; document.getElementById('guess-input').value = ""; }
@@ -893,12 +1019,94 @@
             else if (type === 'memory') { document.getElementById('game-title').innerText = "MÉMOIRE"; document.getElementById('game-memory').classList.remove('hidden'); initMemory(); }
             else if (type === 'penalty') { document.getElementById('game-title').innerText = "FOOT"; document.getElementById('game-penalty').classList.remove('hidden'); document.getElementById('penalty-result').innerText = ""; }
         }
-        function closeGame() { document.getElementById('game-modal').classList.add('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); }
+        function closeGame() { 
+            document.getElementById('game-modal').classList.add('hidden'); 
+            if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); 
+            if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
+        }
         function addFriendFromGame() { if(currentOpponent && currentOpponent.peerId) { /* Add logic */ } }
-        function finishGame(win, type) { if(!currentUser) return; currentUser.games++; if (win) { currentUser.wins++; alert("🏆 VICTOIRE !"); let scoreText = "Gagné !"; if(type === 'speed') scoreText = gameVars.speedScore + " clics"; createPost(currentUser, currentOpponent, scoreText, type); } else { alert("😢 PERDU !"); } updateUser(); updateUI(); }
+        function finishGame(win, type) { 
+            if(!currentUser) return; 
+            currentUser.games++; 
+            if (win) { 
+                currentUser.wins++; 
+                alert("🏆 VICTOIRE !"); 
+                let scoreText = "Gagné !"; 
+                if(type === 'speed') scoreText = gameVars.speedScore + " clics"; 
+                createPost(currentUser, currentOpponent, scoreText, type); 
+            } else { 
+                alert("😢 PERDU !"); 
+            } 
+            updateUser(); updateUI(); 
+        }
 
-        function sendMove(moveData) { if(currentOpponent && currentOpponent.peerId) sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData }); }
-        function processOnlineMove(data) { console.log("Processing move:", data); }
+        function sendMove(moveData) { 
+            if(currentOpponent && currentOpponent.peerId) {
+                sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData });
+                // Start timer for opponent
+                startTurnTimer();
+            }
+        }
+
+        function startTurnTimer() {
+            if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
+            const bar = document.getElementById('ttt-timer-bar');
+            const container = document.getElementById('ttt-timer-container');
+            
+            if(container) {
+                container.classList.remove('hidden');
+                // Reset animation
+                bar.classList.remove('timer-animate');
+                void bar.offsetWidth; // trigger reflow
+                bar.classList.add('timer-animate');
+            }
+
+            gameVars.turnTimer = setTimeout(() => {
+                // Time's up! Send loss signal if I was supposed to play, or win if opponent timed out
+                // In this simple implementation, if I receive a move, I reset. If I don't send a move in 10s, I lose.
+                // But here we are starting the timer AFTER I sent a move, waiting for opponent.
+                // Actually, the timer should run when it's MY turn.
+                // Let's simplify: When I receive a move, I start MY timer.
+            }, 10000);
+        }
+        
+        function resetTurnTimer() {
+             if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
+             // Logic handled in handleData
+        }
+
+        function processOnlineMove(data) {
+            if (selectedGameType === 'tictactoe') {
+                const { index, value } = data.moveData;
+                if(gameVars.tttBoard[index] === '') {
+                    gameVars.tttBoard[index] = value;
+                    renderTTT();
+                    if(checkWin(value)) {
+                        if(value === 'O') finishGame(false, 'tictactoe'); // Opponent won
+                        else finishGame(true, 'tictactoe');
+                        gameVars.tttActive = false;
+                    } else {
+                        // My turn
+                        gameVars.myTurn = true;
+                        document.getElementById('ttt-status').innerText = "À TOI DE JOUER !";
+                        // Start 10s timer for ME
+                        const bar = document.getElementById('ttt-timer-bar');
+                        const container = document.getElementById('ttt-timer-container');
+                        if(container) {
+                            container.classList.remove('hidden');
+                            bar.classList.remove('timer-animate');
+                            void bar.offsetWidth;
+                            bar.classList.add('timer-animate');
+                        }
+                        gameVars.turnTimer = setTimeout(() => {
+                            alert("Temps écoulé ! Tu as perdu.");
+                            finishGame(false, 'tictactoe');
+                            sendToPeer(currentOpponent.peerId, { type: 'timeout_loss' });
+                        }, 10000);
+                    }
+                }
+            }
+        }
 
         function createPost(winner, loser, score, game) { 
             if(!winner || !loser) return; 
@@ -912,9 +1120,24 @@
         // Math
         function initMath() { const n1 = Math.floor(Math.random() * 20) + 1, n2 = Math.floor(Math.random() * 20) + 1; gameVars.mathAns = n1 + n2; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; const keys = ['1','2','3','C','4','5','6','0','7','8','9','=']; const container = document.getElementById('math-keys'); container.innerHTML = ''; let currentVal = ''; keys.forEach(k => { const btn = document.createElement('button'); btn.innerText = k; btn.className = 'math-key ' + (k === '=' ? 'eq' : (k === 'C' ? 'op' : '')); btn.onclick = () => { if (k === '=') { if (parseInt(currentVal) === gameVars.mathAns) finishGame(true, 'math'); else { alert("Faux !"); initMath(); } } else if (k === 'C') { currentVal = ''; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; } else { currentVal += k; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ${currentVal}`; } }; container.appendChild(btn); }); }
         // TTT
-        function initTTT() { gameVars.tttBoard = ['', '', '', '', '', '', '', '', '']; gameVars.tttActive = true; document.getElementById('ttt-status').innerText = "À TOI (X)"; renderTTT(); }
+        function initTTT() { gameVars.tttBoard = ['', '', '', '', '', '', '', '', '']; gameVars.tttActive = true; gameVars.myTurn = true; document.getElementById('ttt-status').innerText = "À TOI (X)"; document.getElementById('ttt-timer-container').classList.remove('hidden'); renderTTT(); 
+            // Start initial timer
+            const bar = document.getElementById('ttt-timer-bar');
+            bar.classList.remove('timer-animate'); void bar.offsetWidth; bar.classList.add('timer-animate');
+            gameVars.turnTimer = setTimeout(() => { alert("Temps écoulé !"); finishGame(false, 'tictactoe'); }, 10000);
+        }
         function renderTTT() { const board = document.getElementById('ttt-board'); board.innerHTML = gameVars.tttBoard.map((c, i) => `<div class="ttt-cell" style="background:var(--input); aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; border-radius:8px; cursor:pointer;" onclick="move(${i})">${c}</div>`).join(''); }
-        function move(i) { if (!gameVars.tttActive || gameVars.tttBoard[i]) return; gameVars.tttBoard[i] = 'X'; renderTTT(); sendMove({ type: 'ttt', index: i, value: 'X' }); if (checkWin('X')) { finishGame(true, 'ttt'); gameVars.tttActive = false; return; } setTimeout(() => { const empty = gameVars.tttBoard.map((v, idx) => v === '' ? idx : null).filter(v => v !== null); if (empty.length) { gameVars.tttBoard[empty[Math.floor(Math.random() * empty.length)]] = 'O'; renderTTT(); if (checkWin('O')) { finishGame(false, 'ttt'); gameVars.tttActive = false; } } }, 600); }
+        function move(i) { 
+            if (!gameVars.tttActive || gameVars.tttBoard[i] || !gameVars.myTurn) return; 
+            if(gameVars.turnTimer) clearTimeout(gameVars.turnTimer);
+            gameVars.tttBoard[i] = 'X'; 
+            renderTTT(); 
+            sendMove({ type: 'ttt', index: i, value: 'X' }); 
+            gameVars.myTurn = false;
+            document.getElementById('ttt-status').innerText = "Tour de l'adversaire...";
+            document.getElementById('ttt-timer-container').classList.add('hidden');
+            if (checkWin('X')) { finishGame(true, 'ttt'); gameVars.tttActive = false; return; } 
+        }
         function checkWin(p) { const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return wins.some(c => c.every(i => gameVars.tttBoard[i] === p)); }
         function resetTTT() { initTTT(); }
         // Speed
