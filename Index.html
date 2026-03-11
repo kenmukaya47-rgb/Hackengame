@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - GLOBAL</title>
+    <title>HACKEN CONNECT - FINAL FIX</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs (Version Compatible Web Simple) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
@@ -47,7 +47,11 @@
         .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at top right, #1e1b4b, #0f172a); }
         .login-box { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 24px; padding: 30px; width: 100%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); }
         .input-group { background: var(--input); border-radius: 16px; padding: 6px; display: flex; align-items: center; margin-bottom: 20px; position: relative; }
-        .search-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        /* Fix Button Layout */
+        .search-group { display: flex; gap: 10px; align-items: center; background: var(--input); border-radius: 12px; padding: 5px; margin-bottom: 15px; }
+        .search-input { flex: 1; background: transparent; border: none; color: white; outline: none; padding: 8px 12px; font-size: 14px; }
+        .icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        
         .country-btn { background: transparent; border: none; color: white; font-weight: bold; padding: 12px; outline: none; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         .phone-input { background: transparent; border: none; color: white; flex: 1; padding: 12px; outline: none; font-size: 16px; }
         .btn-login { background: linear-gradient(135deg, var(--primary), var(--secondary)); width: 100%; padding: 16px; border: none; border-radius: 16px; color: white; font-weight: 800; font-size: 16px; cursor: pointer; }
@@ -114,12 +118,14 @@
         .mode-option { background: var(--input); padding: 15px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
         .mode-option:hover { background: rgba(99, 102, 241, 0.2); }
 
-        /* Comments Modal */
+        /* Comments Modal - FIXED LAYOUT */
         .comments-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 80; display: flex; align-items: flex-end; }
         .comments-card { background: var(--card); width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 70vh; display: flex; flex-direction: column; animation: slideUp 0.3s; }
         .comment-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; }
         .comment-user { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
         .comment-text { font-size: 13px; color: #e2e8f0; }
+        .comment-input-group { display: flex; gap: 10px; margin-top: 10px; }
+        .comment-input { flex: 1; background: var(--input); border: none; border-radius: 12px; padding: 10px; color: white; outline: none; }
         
         /* Connection Status */
         .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; z-index: 90; display: flex; align-items: center; gap: 5px; }
@@ -164,9 +170,10 @@
                 <button onclick="closeComments()" style="background:none; border:none; color:white; font-size:20px;">✕</button>
             </div>
             <div id="comments-list" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="comment-input" placeholder="Écrire un commentaire..." style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none;">
-                <button onclick="postComment()" class="btn-small btn-primary">Envoyer</button>
+            <!-- Fixed Layout for Input -->
+            <div class="comment-input-group">
+                <input type="text" id="comment-input" placeholder="Écrire un commentaire..." class="comment-input">
+                <button onclick="postComment()" class="btn-small btn-primary" style="flex-shrink: 0;">Envoyer</button>
             </div>
         </div>
     </div>
@@ -265,9 +272,10 @@
             </div>
             <p style="font-size:10px; color:#94a3b8; margin-top:-10px; margin-bottom:15px; padding:0 5px;">Demande à ton ami de te donner son ID affiché dans son profil.</p>
 
-            <div class="input-group">
-                <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom..." style="flex:1; background:transparent; border:none; color:white; outline:none; padding:10px;">
-                <button class="search-btn" onclick="searchUsers()">🔍</button>
+            <!-- Fixed Search Layout -->
+            <div class="search-group">
+                <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom ou code..." class="search-input">
+                <button class="icon-btn" onclick="searchUsers()">🔍</button>
             </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -374,9 +382,8 @@
 
     <script>
         // ==========================================
-        // CONFIGURATION FIREBASE (PERSONNALISÉE)
+        // CONFIGURATION FIREBASE
         // ==========================================
-        
         const firebaseConfig = {
             apiKey: "AIzaSyCtHXCyNu4psPE-O0KwcGtbbc05wTGzv3A",
             authDomain: "hacken-a39e0.firebaseapp.com",
@@ -393,23 +400,19 @@
                 const app = firebase.initializeApp(firebaseConfig);
                 const db = firebase.database();
                 console.log("✅ Firebase Connecté avec succès !");
-                console.log("Projet:", firebaseConfig.projectId);
             } catch (e) {
                 console.error("❌ Erreur Firebase:", e);
-                alert("Erreur de connexion Firebase :\n" + e.message + "\n\nVérifie tes clés API et les règles de sécurité !");
+                alert("Erreur de connexion Firebase :\n" + e.message);
             }
-        } else {
-            firebase.app();
         }
 
         // --- DATA & PEER JS ---
         let currentUser = null;
-        let localDB = { friends: [], chats: {} }; // Local storage for friends/chats
+        let localDB = { friends: [], chats: {} }; 
         let selectedCode = "+243", selectedFlag = "🇨🇩";
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [] };
         
-        // PeerJS Variables
         let peer = null;
         let myPeerId = null;
         let connections = {}; 
@@ -421,13 +424,14 @@
             const savedLocal = localStorage.getItem('hacken_local');
             if (savedLocal) localDB = JSON.parse(savedLocal);
             
-            const session = sessionStorage.getItem('hacken_user');
-            if (session) { 
-                currentUser = JSON.parse(session); 
-                initPeer(); 
-                showApp(); 
-                listenToGlobalPosts();
+            // Check if user was logged in before
+            const lastPhone = sessionStorage.getItem('hacken_last_phone');
+            if (lastPhone) {
+                // Auto-login with last phone
+                document.getElementById('phone-input').value = lastPhone.replace(selectedCode, '');
+                handleLogin(true); // True = silent login attempt
             }
+
             document.getElementById('selected-code').innerText = selectedCode;
             document.getElementById('selected-flag').innerText = selectedFlag;
         };
@@ -438,7 +442,6 @@
             const feedContainer = document.getElementById('feed-container');
             const emptyFeed = document.getElementById('empty-feed');
             
-            // Listen to 'posts' node in Firebase
             firebase.database().ref('posts').limitToLast(20).on('value', (snapshot) => {
                 feedContainer.innerHTML = '';
                 let hasPosts = false;
@@ -471,11 +474,7 @@
                     feedContainer.innerHTML += html;
                 });
                 
-                if(!hasPosts) {
-                    emptyFeed.classList.remove('hidden');
-                } else {
-                    emptyFeed.classList.add('hidden');
-                }
+                if(!hasPosts) { emptyFeed.classList.remove('hidden'); } else { emptyFeed.classList.add('hidden'); }
             });
         }
 
@@ -485,13 +484,8 @@
                 if (post) {
                     if (!post.likedBy) post.likedBy = [];
                     const idx = post.likedBy.indexOf(currentUser.id);
-                    if (idx === -1) {
-                        post.likedBy.push(currentUser.id);
-                        post.likes = (post.likes || 0) + 1;
-                    } else {
-                        post.likedBy.splice(idx, 1);
-                        post.likes = (post.likes || 0) - 1;
-                    }
+                    if (idx === -1) { post.likedBy.push(currentUser.id); post.likes = (post.likes || 0) + 1; } 
+                    else { post.likedBy.splice(idx, 1); post.likes = (post.likes || 0) - 1; }
                 }
                 return post;
             });
@@ -504,13 +498,9 @@
             document.getElementById('comments-modal').classList.remove('hidden');
             document.getElementById('comment-input').value = '';
             
-            // Listen to comments for this post
             firebase.database().ref('posts/' + postId + '/comments').on('value', (snapshot) => {
                 list.innerHTML = '';
-                if (!snapshot.exists()) {
-                    list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire.</p>';
-                    return;
-                }
+                if (!snapshot.exists()) { list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire.</p>'; return; }
                 snapshot.forEach((child) => {
                     const c = child.val();
                     list.innerHTML += `<div class="comment-item"><div class="comment-user">${c.user}</div><div class="comment-text">${c.text}</div></div>`;
@@ -526,13 +516,8 @@
         function postComment() {
             const txt = document.getElementById('comment-input').value.trim();
             if(!txt || !activePostId) return;
-            
             const newCommentRef = firebase.database().ref('posts/' + activePostId + '/comments').push();
-            newCommentRef.set({
-                user: currentUser.name,
-                text: txt,
-                time: Date.now()
-            });
+            newCommentRef.set({ user: currentUser.name, text: txt, time: Date.now() });
             document.getElementById('comment-input').value = '';
         }
 
@@ -547,19 +532,15 @@
             peer.on('open', (id) => {
                 myPeerId = id;
                 currentUser.peerId = id;
-                updateUser();
+                updateUser(); // Save peerID to Firebase
                 document.getElementById('profile-peer-id').innerText = id;
                 statusEl.className = 'connection-status status-online';
                 statusText.innerText = 'En Ligne';
                 
-                // Update presence in Firebase
                 firebase.database().ref('users/' + myPeerId).set({
-                    name: currentUser.name,
-                    avatar: currentUser.avatar,
-                    online: true
+                    name: currentUser.name, avatar: currentUser.avatar, online: true, code: currentUser.code
                 });
                 
-                // Listen for challenges
                 firebase.database().ref('challenges').orderByChild('targetId').equalTo(myPeerId).on('child_added', (snapshot) => {
                     const data = snapshot.val();
                     if(!data.accepted && !data.declined) {
@@ -599,7 +580,6 @@
                     saveLocal();
                     renderChatMessages();
                 } else {
-                    // Increment badge
                     unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
                     updateBadges();
                 }
@@ -614,7 +594,6 @@
         function closeNotification() { document.getElementById('notification-toast').classList.remove('show'); pendingChallenge = null; }
         function acceptChallenge() {
             if(pendingChallenge) {
-                // Mark as accepted in Firebase
                 firebase.database().ref('challenges/' + pendingChallenge.key).update({ accepted: true });
                 startGame(pendingChallenge.game, { name: pendingChallenge.fromName, avatar: pendingChallenge.fromAvatar, peerId: pendingChallenge.fromPeerId });
                 document.getElementById('notification-toast').classList.remove('show');
@@ -623,39 +602,57 @@
         }
         function sendChallenge(targetPeerId, targetName, targetAvatar, game) {
             firebase.database().ref('challenges').push({
-                fromName: currentUser.name,
-                fromAvatar: currentUser.avatar,
-                fromPeerId: myPeerId,
-                targetId: targetPeerId,
-                game: game,
-                accepted: false,
-                declined: false,
-                timestamp: Date.now()
-            }).then(() => {
-                alert(`Défi envoyé à ${targetName} !`);
-                closeModeModal();
-            });
+                fromName: currentUser.name, fromAvatar: currentUser.avatar, fromPeerId: myPeerId,
+                targetId: targetPeerId, game: game, accepted: false, declined: false, timestamp: Date.now()
+            }).then(() => { alert(`Défi envoyé à ${targetName} !`); closeModeModal(); });
         }
 
-        // --- AUTH ---
+        // --- AUTH (FIXED PERSISTENCE) ---
         function toggleCountry() { document.getElementById('country-list').style.display = document.getElementById('country-list').style.display === 'block' ? 'none' : 'block'; }
         function setCountry(code, flag) { selectedCode = code; selectedFlag = flag; document.getElementById('selected-code').innerText = code; document.getElementById('selected-flag').innerText = flag; document.getElementById('country-list').style.display = 'none'; document.getElementById('phone-input').focus(); }
         document.addEventListener('click', (e) => { if (!document.getElementById('country-btn').contains(e.target) && !document.getElementById('country-list').contains(e.target)) document.getElementById('country-list').style.display = 'none'; });
         
-        function handleLogin() {
-            const phone = document.getElementById('phone-input').value.replace(/\s/g, '');
-            if (phone.length < 5) { document.getElementById('error-msg').style.display = 'block'; return; }
-            document.getElementById('error-msg').style.display = 'none';
-            const fullPhone = selectedCode + phone;
+        function handleLogin(silent = false) {
+            const phoneInput = document.getElementById('phone-input').value.replace(/\s/g, '');
+            if (!silent && phoneInput.length < 5) { document.getElementById('error-msg').style.display = 'block'; return; }
+            if (!silent) document.getElementById('error-msg').style.display = 'none';
             
-            // Check if user exists in Firebase or create new
-            // For simplicity in this demo, we create locally and sync peerID
-            let user = { id: Date.now().toString(), name: "Joueur " + phone.slice(-3), phone: fullPhone, avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", wins: 0, games: 0, peerId: null };
+            const fullPhone = selectedCode + (phoneInput || '');
             
-            currentUser = user; 
-            sessionStorage.setItem('hacken_user', JSON.stringify(user)); 
-            initPeer(); 
-            showApp();
+            // Use phone as unique ID key in Firebase
+            const userId = fullPhone.replace(/[^a-zA-Z0-9]/g, '_'); 
+            
+            firebase.database().ref('users/' + userId).once('value', (snapshot) => {
+                let user = snapshot.val();
+                
+                if (!user) {
+                    // Create new user
+                    user = { 
+                        id: userId, 
+                        name: "Joueur " + (phoneInput.slice(-3) || 'New'), 
+                        phone: fullPhone, 
+                        code: 'HK-' + Math.floor(1000 + Math.random() * 9000),
+                        avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", 
+                        wins: 0, games: 0, peerId: null 
+                    };
+                    firebase.database().ref('users/' + userId).set(user);
+                }
+                
+                currentUser = user;
+                sessionStorage.setItem('hacken_user', JSON.stringify(user));
+                sessionStorage.setItem('hacken_last_phone', fullPhone); // Save for auto-login
+                
+                if (!silent) {
+                    initPeer(); 
+                    showApp();
+                } else {
+                    // Silent login logic
+                    if(currentUser) {
+                         initPeer(); 
+                         showApp();
+                    }
+                }
+            });
         }
         
         function showApp() { 
@@ -664,6 +661,7 @@
             updateUI(); 
             renderFriends(); 
             renderOnline(); 
+            listenToGlobalPosts();
         }
         
         function updateUI() { 
@@ -680,7 +678,7 @@
         function logout() { 
             if(peer) peer.destroy(); 
             if(myPeerId) firebase.database().ref('users/' + myPeerId).remove();
-            sessionStorage.removeItem('hacken_user'); 
+            // Keep session for auto-login next time
             location.reload(); 
         }
 
@@ -717,12 +715,38 @@
             }).join(''); 
         }
         
+        // FIXED SEARCH (Name AND Code)
         function searchUsers() { 
-            const q = document.getElementById('search-input').value.toLowerCase(); 
+            const q = document.getElementById('search-input').value.toLowerCase().trim(); 
             const list = document.getElementById('friends-list'); 
             if (q.length < 2) { renderFriends(); return; } 
-            const matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q)); 
-            list.innerHTML = matches.map(u => { 
+            
+            // Search in friends list first
+            let matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q) || (u.code && u.code.toLowerCase().includes(q)));
+            
+            // If no match in friends, search globally in Firebase users
+            if(matches.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Recherche en cours...</p>';
+                firebase.database().ref('users').orderByChild('code').equalTo(q.toUpperCase()).once('value', snapshot => {
+                    const globalMatches = [];
+                    snapshot.forEach(child => {
+                        const u = child.val();
+                        if(u.id !== currentUser.id) globalMatches.push(u);
+                    });
+                    // Also search by name roughly (Firebase limited without Algolia, so we do basic check if loaded)
+                    // For demo, we rely on Code search which is exact
+                    renderSearchResults(globalMatches, list);
+                });
+                return;
+            }
+            
+            renderSearchResults(matches, list);
+        }
+
+        function renderSearchResults(matches, listElement) {
+            if(matches.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun résultat trouvé.</p>'; return; }
+            listElement.innerHTML = matches.map(u => { 
+                const isFriend = localDB.friends.find(f => f.peerId === u.peerId || f.id === u.id);
                 const isOnline = !!connections[u.peerId];
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -730,9 +754,12 @@
                             <img src="${u.avatar}" class="avatar">
                             <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
-                        <b style="font-size:15px;">${u.name}</b>
+                        <div>
+                            <b style="font-size:15px;">${u.name}</b>
+                            ${u.code ? `<div style="font-size:10px; color:#64748b;">Code: ${u.code}</div>` : ''}
+                        </div>
                     </div>
-                    <span style="color:#94a3b8; font-size:12px;">✓ Ami</span>
+                    ${isFriend ? '<span style="color:#94a3b8; font-size:12px;">✓ Ami</span>' : `<button onclick="addFriendByObject('${u.id}', '${u.peerId}', '${u.name}', '${u.avatar}')" class="btn-small btn-success">+ Ajouter</button>`}
                 </div>`; 
             }).join(''); 
         }
@@ -745,16 +772,30 @@
             
             const conn = peer.connect(pid);
             conn.on('open', () => {
-                localDB.friends.push({ peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" });
-                saveLocal();
-                renderFriends();
-                alert("Ami ajouté !");
-                conn.close();
+                // Fetch user info from Firebase to save properly
+                firebase.database().ref('users').orderByChild('peerId').equalTo(pid).once('value', snapshot => {
+                    let friendData = { peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" };
+                    snapshot.forEach(child => { friendData = child.val(); friendData.peerId = pid; });
+                    
+                    localDB.friends.push(friendData);
+                    saveLocal();
+                    renderFriends();
+                    alert("Ami ajouté !");
+                    conn.close();
+                });
             });
             conn.on('error', () => alert("ID invalide ou hors ligne."));
         }
+
+        function addFriendByObject(id, peerId, name, avatar) {
+            if(localDB.friends.find(f => f.id === id)) { alert("Déjà ami !"); return; }
+            localDB.friends.push({ id: id, peerId: peerId, name: name, avatar: avatar });
+            saveLocal();
+            renderFriends();
+            alert("Ami ajouté !");
+        }
         
-        function updateUser() { if(!currentUser) return; sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
+        function updateUser() { if(!currentUser) return; firebase.database().ref('users/' + currentUser.id).update(currentUser); sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
         function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); updateUI(); } }
         function updateAvatar(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => { currentUser.avatar = e.target.result; updateUser(); updateUI(); }; reader.readAsDataURL(input.files[0]); } }
         
