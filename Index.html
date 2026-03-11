@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - FIREBASE CHAT</title>
+    <title>HACKEN CONNECT - FINAL FIX</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs (Uniquement Firebase, pas de PeerJS pour le chat) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
@@ -34,7 +34,7 @@
         .hidden { display: none !important; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
         .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; }
-        .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(5px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; transition: transform 0.2s; }
+        .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(5px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; transition: transform 0.2s; cursor: pointer; }
         .card:hover { transform: translateY(-2px); }
         .btn-small { padding: 8px 16px; border-radius: 12px; border: none; font-weight: 700; font-size: 12px; cursor: pointer; transition: transform 0.2s; }
         .btn-small:active { transform: scale(0.95); }
@@ -589,7 +589,9 @@
         let pendingChallenge = null;
         let unreadCounts = {};
         let pendingFriendRequest = null;
-        let chatListener = null; // Pour gérer l'écouteur Firebase
+        let chatListener = null;
+        let presenceRef = null;
+        let connectedRef = null;
 
         // --- INIT ---
         window.onload = function() {
@@ -678,7 +680,7 @@
                     } else if (hasReceivedRequest) {
                         actionBtn = `<button onclick="acceptFriendRequestById('${u.id}', '${u.name}')" class="btn-small btn-success">Accepter</button>`;
                     } else {
-                        actionBtn = `<button onclick="sendFriendRequest('${u.id}', '${u.peerId}', '${u.name}')" class="btn-small btn-primary">+ Ajouter</button>`;
+                        actionBtn = `<button onclick="sendFriendRequest('${u.id}', '${u.id}', '${u.name}')" class="btn-small btn-primary">+ Ajouter</button>`;
                     }
 
                     const html = `<div class="card animate-fade" style="display:flex; justify-content:space-between; align-items:center;">
@@ -806,7 +808,7 @@
              }
         }
 
-        // --- AUTH & STATUS ---
+        // --- AUTH & PRESENCE SYSTEM (FIXED) ---
         function toggleCountry() { document.getElementById('country-list').style.display = document.getElementById('country-list').style.display === 'block' ? 'none' : 'block'; }
         function setCountry(code, flag) { selectedCode = code; selectedFlag = flag; document.getElementById('selected-code').innerText = code; document.getElementById('selected-flag').innerText = flag; document.getElementById('country-list').style.display = 'none'; document.getElementById('phone-input').focus(); }
         document.addEventListener('click', (e) => { if (!document.getElementById('country-btn').contains(e.target) && !document.getElementById('country-list').contains(e.target)) document.getElementById('country-list').style.display = 'none'; });
@@ -829,13 +831,13 @@
                         phone: fullPhone, 
                         code: 'HK-' + Math.floor(1000 + Math.random() * 9000),
                         avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", 
-                        wins: 0, games: 0, peerId: userId, // Use userId as peerId for simplicity
+                        wins: 0, games: 0, 
                         joinedAt: Date.now(),
                         online: true
                     };
                     db.ref('users/' + userId).set(user);
                 } else {
-                    // Update online status
+                    // Update online status immediately
                     db.ref('users/' + userId).update({ online: true, lastSeen: Date.now() });
                 }
                 
@@ -864,7 +866,35 @@
             listenToUsers();
             listenToFriendRequests();
             
-            // Listen to friends online status
+            // --- PRESENCE SYSTEM (REAL-TIME ONLINE/OFFLINE) ---
+            // 1. Get a reference to the 'connected' state of our client
+            connectedRef = db.ref(".info/connected");
+            connectedRef.on("value", (snap) => {
+                if (snap.val() === true) {
+                    // We're connected (or reconnected)!
+                    document.getElementById('conn-status').className = 'connection-status status-online';
+                    document.getElementById('conn-text').innerText = 'En Ligne';
+                    
+                    // Set up presence: when we disconnect, set online=false and update lastSeen
+                    presenceRef = db.ref("users/" + currentUser.id);
+                    presenceRef.onDisconnect().update({
+                        online: false,
+                        lastSeen: db.ServerValue.TIMESTAMP
+                    }).then(() => {
+                        // When connected, set online=true
+                        presenceRef.update({
+                            online: true,
+                            lastSeen: db.ServerValue.TIMESTAMP
+                        });
+                    });
+                } else {
+                    // We're disconnected
+                    document.getElementById('conn-status').className = 'connection-status status-offline';
+                    document.getElementById('conn-text').innerText = 'Hors ligne';
+                }
+            });
+
+            // 2. Listen to friends' online status in real-time
             if(currentUser && currentUser.friends) {
                 currentUser.friends.forEach(friend => {
                     db.ref('users/' + friend.id).on('value', (snapshot) => {
@@ -874,8 +904,14 @@
                             const localFriend = localDB.friends.find(f => f.id === friend.id);
                             if(localFriend) {
                                 localFriend.online = data.online;
-                                renderFriends();
-                                renderOnline();
+                                // Refresh UI if needed
+                                if(document.getElementById('view-friends').classList.contains('active')) {
+                                    renderFriends();
+                                }
+                                if(document.getElementById('view-arcade').classList.contains('active')) {
+                                    renderOnline();
+                                }
+                                // Update chat header if open
                                 if(activeChatId === friend.id) {
                                     const statusEl = document.getElementById('chat-status');
                                     if(statusEl) {
@@ -883,6 +919,25 @@
                                         statusEl.style.color = data.online ? "#4ade80" : "#ef4444";
                                     }
                                 }
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // 3. Listen for NEW chats to appear in the list automatically
+            if(currentUser && currentUser.friends) {
+                currentUser.friends.forEach(friend => {
+                    const chatKey = [currentUser.id, friend.id].sort().join('_');
+                    db.ref('chats/' + chatKey).limitToLast(1).on('child_added', () => {
+                        // A new message arrived! Refresh the chat list if it's open or just ensure badge updates
+                        if(document.getElementById('view-chatlist').classList.contains('active')) {
+                            renderChatListRealtime();
+                        } else {
+                            // Update badge
+                            if(activeChatId !== friend.id) {
+                                unreadCounts[friend.id] = (unreadCounts[friend.id] || 0) + 1;
+                                updateBadges();
                             }
                         }
                     });
@@ -917,8 +972,8 @@
         }
         
         function logout() { 
-            if(currentUser && currentUser.id) {
-                db.ref('users/' + currentUser.id).update({ online: false, lastSeen: Date.now() });
+            if(currentUser && currentUser.id && presenceRef) {
+                presenceRef.update({ online: false, lastSeen: db.ServerValue.TIMESTAMP });
             }
             sessionStorage.removeItem('hacken_user'); 
             location.reload(); 
@@ -930,7 +985,11 @@
             const target = document.getElementById(viewId.startsWith('view-') ? viewId : 'view-' + viewId);
             if(target) target.classList.add('active'); 
             if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); } 
-            if(viewId === 'view-chatlist') { unreadCounts = {}; updateBadges(); }
+            if(viewId === 'view-chatlist') { 
+                unreadCounts = {}; 
+                updateBadges(); 
+                renderChatListRealtime(); // Force refresh when opening
+            }
         }
         
         function renderFriends() { 
@@ -1099,39 +1158,87 @@
 
         function copyPeerId() { navigator.clipboard.writeText(currentUser.id).then(() => alert("ID copié !")); }
 
-        // --- CHAT LIST ---
-        function openChatList() {
+        // --- CHAT LIST (REAL-TIME FIXED) ---
+        function renderChatListRealtime() {
             const list = document.getElementById('full-chat-list');
-            const chatKeys = Object.keys(localDB.chats);
-            if(chatKeys.length === 0) { list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation.</p>'; }
-            else {
-                list.innerHTML = chatKeys.map(key => {
-                    const ids = key.split('_');
-                    const otherId = ids.find(id => id !== currentUser.id);
-                    if(!otherId) return '';
-                    const friend = localDB.friends.find(f => f.id === otherId);
-                    if(!friend) return '';
-                    const msgs = localDB.chats[key];
-                    const lastMsg = msgs[msgs.length-1];
-                    const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const count = unreadCounts[otherId] || 0;
+            if (!currentUser || !currentUser.friends) {
+                list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucun ami pour discuter.</p>';
+                return;
+            }
+
+            // Build a map of friends for quick lookup
+            const friendsMap = {};
+            currentUser.friends.forEach(f => friendsMap[f.id] = f);
+
+            // Get all chat keys involving me
+            const chatRefs = currentUser.friends.map(f => {
+                const chatKey = [currentUser.id, f.id].sort().join('_');
+                return { key: chatKey, friendId: f.id, ref: db.ref('chats/' + chatKey).limitToLast(1) };
+            });
+
+            // Fetch last message for each chat
+            let renderedCount = 0;
+            let htmlContent = '';
+            
+            if(chatRefs.length === 0) {
+                 list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Commence une conversation avec un ami !</p>';
+                 return;
+            }
+
+            chatRefs.forEach(item => {
+                item.ref.once('value', snapshot => {
+                    let lastMsg = null;
+                    let count = unreadCounts[item.friendId] || 0;
                     
-                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.id}', '${friend.name}', '${friend.avatar}')">
+                    if(snapshot.exists()) {
+                        snapshot.forEach(child => {
+                            lastMsg = child.val();
+                        });
+                    }
+
+                    const friend = friendsMap[item.friendId];
+                    if(!friend) return;
+
+                    const timeStr = lastMsg ? new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                    const preview = lastMsg ? (lastMsg.sender === currentUser.id ? 'Toi: ' : '') + lastMsg.text.substring(0, 20) + (lastMsg.text.length > 20 ? '...' : '') : 'Nouvelle conversation';
+                    
+                    const cardHtml = `
+                    <div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.id}', '${friend.name}', '${friend.avatar}')">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${friend.avatar}" class="avatar">
+                            <div style="position:relative;">
+                                <img src="${friend.avatar}" class="avatar">
+                                <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${friend.online ? '#22c55e' : '#64748b'}; border-radius:50%; border:2px solid var(--card);"></div>
+                            </div>
                             <div>
                                 <b style="font-size:15px; display:block;">${friend.name}</b>
-                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === currentUser.id ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
+                                <span style="font-size:12px; color:#94a3b8;">${preview}</span>
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <span style="font-size:10px; color:#64748b;">${time}</span>
+                            <span style="font-size:10px; color:#64748b;">${timeStr}</span>
                             ${count > 0 ? `<div class="badge" style="position:relative; top:0; right:0; margin-top:5px;">${count}</div>` : ''}
                         </div>
                     </div>`;
-                }).join('');
-            }
+                    
+                    // Simple way to append without complex sorting for now (Firebase order is usually by creation)
+                    // For perfect sorting, we'd need to collect all then sort, but this is fast enough for < 50 chats
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = cardHtml;
+                    list.appendChild(tempDiv.firstElementChild);
+                    
+                    renderedCount++;
+                    if(renderedCount === chatRefs.length && list.children.length === 0) {
+                         list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation récente.</p>';
+                    }
+                });
+            });
+        }
+
+        function openChatList() {
+            const list = document.getElementById('full-chat-list');
+            list.innerHTML = '<div style="text-align:center; padding:20px;">Chargement...</div>';
             switchView('view-chatlist');
+            renderChatListRealtime();
         }
 
         // --- MODE SELECTION ---
@@ -1211,7 +1318,6 @@
 
         function sendMove(moveData) { 
             if(currentOpponent && currentOpponent.id) {
-                // Send move via Firebase for reliability
                 db.ref('games/' + currentOpponent.id).push({
                     from: currentUser.id,
                     type: 'game_move',
@@ -1298,7 +1404,6 @@
             gameVars.turnTimer = setTimeout(() => {
                 alert("Temps écoulé ! Tu as perdu.");
                 finishGame(false, selectedGameType);
-                // Send loss notification via Firebase
                 if(currentOpponent && currentOpponent.id) {
                      db.ref('games/' + currentOpponent.id).push({
                         from: currentUser.id,
@@ -1641,7 +1746,6 @@
                     }
                 }, 500);
             } else if (currentOpponent && currentOpponent.id) {
-                // Send click via Firebase
                 db.ref('games/' + currentOpponent.id).push({
                     from: currentUser.id,
                     type: 'war_click',
@@ -1735,12 +1839,10 @@
             
             document.getElementById('chat-interface').classList.remove('hidden'); 
             
-            // Remove old listener if exists
             if(chatListener) {
                 chatListener.off();
             }
             
-            // Create new listener for this chat
             const chatKey = [currentUser.id, friendId].sort().join('_');
             chatListener = db.ref('chats/' + chatKey);
             
@@ -1793,7 +1895,7 @@
         if(currentUser) {
             db.ref('games/' + currentUser.id).on('child_added', (snapshot) => {
                 const data = snapshot.val();
-                if(data.from !== currentUser.id) { // Ignore my own messages
+                if(data.from !== currentUser.id) { 
                     if(data.type === 'game_move' && currentOpponent && currentOpponent.id === data.from) {
                         processOnlineMove(data);
                         resetTurnTimer();
@@ -1843,6 +1945,17 @@
         function closeNotification(e) {
             if(e) e.stopPropagation();
             document.getElementById('notification-toast').classList.remove('show');
+        }
+        
+        function updateBadges() {
+            const total = Object.values(unreadCounts).reduce((a,b)=>a+b, 0);
+            const badge = document.getElementById('msg-badge');
+            if(total > 0) { 
+                badge.innerText = total > 9 ? '9+' : total; 
+                badge.classList.remove('hidden'); 
+            } else {
+                badge.classList.add('hidden');
+            }
         }
     </script>
 </body>
