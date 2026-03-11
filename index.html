@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - V9</title>
+    <title>HACKEN CONNECT - GLOBAL</title>
+    <!-- PeerJS for P2P Chat/Games -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #6366f1; --secondary: #ec4899; --dark: #0f172a; --card: #1e293b; --input: #334155; }
@@ -21,7 +28,6 @@
         
         .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .animate-pulse-green { animation: pulse-green 1.5s infinite; }
         .msg-anim { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
         /* Utilities */
@@ -34,14 +40,14 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: #22c55e; color: white; }
         .btn-danger { background: #ef4444; color: white; }
-        .btn-edit { background: rgba(255,255,255,0.1); color: white; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         
         /* Login */
         .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at top right, #1e1b4b, #0f172a); }
         .login-box { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 24px; padding: 30px; width: 100%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); }
-        .input-group { background: var(--input); border-radius: 16px; padding: 6px; display: flex; align-items: center; margin-bottom: 20px; }
+        .input-group { background: var(--input); border-radius: 16px; padding: 6px; display: flex; align-items: center; margin-bottom: 20px; position: relative; }
+        .search-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .country-btn { background: transparent; border: none; color: white; font-weight: bold; padding: 12px; outline: none; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         .phone-input { background: transparent; border: none; color: white; flex: 1; padding: 12px; outline: none; font-size: 16px; }
         .btn-login { background: linear-gradient(135deg, var(--primary), var(--secondary)); width: 100%; padding: 16px; border: none; border-radius: 16px; color: white; font-weight: 800; font-size: 16px; cursor: pointer; }
@@ -114,9 +120,24 @@
         .comment-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; }
         .comment-user { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
         .comment-text { font-size: 13px; color: #e2e8f0; }
+        
+        /* Connection Status */
+        .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; z-index: 90; display: flex; align-items: center; gap: 5px; }
+        .status-online { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+        .status-offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .status-connecting { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
+        
+        /* Badge */
+        .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
+
+    <!-- CONNECTION STATUS -->
+    <div id="conn-status" class="connection-status status-connecting">
+        <div style="width:8px; height:8px; background:currentColor; border-radius:50%; animation: pulse-green 1s infinite;"></div>
+        <span id="conn-text">Connexion...</span>
+    </div>
 
     <!-- NOTIFICATION -->
     <div id="notification-toast" class="notification-toast" onclick="acceptChallenge()">
@@ -130,8 +151,7 @@
             <h2 class="font-bold" style="font-size: 20px; margin-bottom: 5px;">Choisis ton adversaire</h2>
             <p style="color:#94a3b8; font-size: 12px; margin-bottom: 20px;">Pour <span id="selected-game-name" class="text-primary font-bold">...</span></p>
             <div class="mode-option" onclick="selectMode('bot')"><span>🤖</span><div style="text-align:left;"><div class="font-bold">Contre Bot</div><div style="font-size:10px; color:#94a3b8;">Entraînement</div></div></div>
-            <div class="mode-option" onclick="selectMode('random')"><span>🌍</span><div style="text-align:left;"><div class="font-bold">Joueur Aléatoire</div><div style="font-size:10px; color:#94a3b8;">Affronte un inconnu</div></div></div>
-            <div class="mode-option" onclick="selectMode('friend')"><span>👥</span><div style="text-align:left;"><div class="font-bold">Contre Ami</div><div style="font-size:10px; color:#94a3b8;">Défie tes contacts</div></div></div>
+            <div class="mode-option" onclick="selectMode('friend')"><span>👥</span><div style="text-align:left;"><div class="font-bold">Contre Ami (En Ligne)</div><div style="font-size:10px; color:#94a3b8;">Défie tes contacts</div></div></div>
             <button onclick="closeModeModal()" style="margin-top:15px; background:transparent; border:none; color:#94a3b8; cursor:pointer;">Annuler</button>
         </div>
     </div>
@@ -156,7 +176,7 @@
         <div class="text-center mb-8">
             <div style="font-size: 60px; margin-bottom: 15px;">🎮</div>
             <h1 style="font-size: 32px; font-weight: 800; margin: 0;">HACKEN CONNECT</h1>
-            <p style="color: #94a3b8; margin: 5px 0 0 0;">V9 EDITION</p>
+            <p style="color: #94a3b8; margin: 5px 0 0 0;">GLOBAL EDITION</p>
         </div>
         <div class="login-box animate-fade">
             <label style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 12px;">Connexion</label>
@@ -202,13 +222,15 @@
             </div>
             <button onclick="openChatList()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; position:relative;">
                 💬
-                <span id="msg-badge" class="hidden" style="position:absolute; top:-5px; right:-5px; background:red; color:white; font-size:10px; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;">!</span>
+                <span id="msg-badge" class="badge hidden">!</span>
             </button>
         </div>
 
         <div id="view-home" class="view active">
-            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Activité</h2>
-            <div id="feed-container"></div>
+            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Activité Mondiale</h2>
+            <div id="feed-container">
+                <div style="text-align:center; padding: 20px; color: #64748b;">Chargement des actualités...</div>
+            </div>
             <div id="empty-feed" class="hidden text-center" style="margin-top: 60px; opacity: 0.5;">
                 <div style="font-size: 50px;">🏆</div>
                 <p>Aucune activité.</p>
@@ -229,17 +251,25 @@
                 <div class="card text-center animate-fade" onclick="openModeModal('memory')" style="cursor: pointer;"><div style="font-size: 30px;">🃏</div><div class="font-bold" style="font-size: 14px;">Mémoire</div></div>
                 <div class="card text-center animate-fade" onclick="openModeModal('penalty')" style="cursor: pointer;"><div style="font-size: 30px;">⚽</div><div class="font-bold" style="font-size: 14px;">Foot</div></div>
             </div>
-            <h3 class="font-bold" style="margin-top: 35px; margin-bottom: 15px;">🔥 En ligne</h3>
+            <h3 class="font-bold" style="margin-top: 35px; margin-bottom: 15px;">🔥 Amis en ligne</h3>
             <div id="online-list"></div>
         </div>
 
         <div id="view-friends" class="view">
             <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Réseau</h2>
+            
+            <!-- Add Friend by ID -->
             <div class="card" style="display:flex; gap:10px; align-items:center;">
-                <input type="text" id="add-friend-code" placeholder="Code Ami (ex: HK-1234)" style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none;">
-                <button onclick="addFriendByCode()" class="btn-small btn-success">Ajouter</button>
+                <input type="text" id="add-friend-id" placeholder="ID Ami (ex: user_abc...)" style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none; font-family:monospace;">
+                <button onclick="addFriendByID()" class="btn-small btn-success">Ajouter</button>
             </div>
-            <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom..." class="card" style="width: 100%; box-sizing: border-box; margin-bottom: 25px;">
+            <p style="font-size:10px; color:#94a3b8; margin-top:-10px; margin-bottom:15px; padding:0 5px;">Demande à ton ami de te donner son ID affiché dans son profil.</p>
+
+            <div class="input-group">
+                <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom..." style="flex:1; background:transparent; border:none; color:white; outline:none; padding:10px;">
+                <button class="search-btn" onclick="searchUsers()">🔍</button>
+            </div>
+            
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 class="font-bold" style="color: #94a3b8; font-size: 14px; text-transform: uppercase;">Mes Amis</h3>
                 <button onclick="editProfileName()" class="btn-small btn-edit">✏️ Modifier mon nom</button>
@@ -267,9 +297,14 @@
                     <h2 id="profile-name" class="font-bold" style="font-size: 24px; margin: 0;">Nom</h2>
                     <button onclick="editProfileName()" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:24px; height:24px; font-size:12px;">✏️</button>
                 </div>
-                <div style="background:rgba(99, 102, 241, 0.2); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 10px; display:inline-block;">CODE: <span id="profile-code" style="font-family:monospace; letter-spacing:1px;">HK-0000</span></div>
-                <p style="font-size:10px; color:#94a3b8; margin-bottom:25px;">Partage ce code pour ajouter des amis</p>
-                <div style="display: inline-block; background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 25px;">NIVEAU <span id="profile-level">1</span></div>
+                
+                <!-- REAL ONLINE ID -->
+                <div style="background:rgba(34, 197, 94, 0.2); color: #4ade80; padding: 10px 15px; border-radius: 12px; font-size: 12px; font-weight: 700; margin: 15px 0; border: 1px dashed #4ade80;">
+                    <div style="font-size:10px; opacity:0.8; margin-bottom:2px;">TON ID EN LIGNE (Partage-le)</div>
+                    <div id="profile-peer-id" style="font-family:monospace; letter-spacing:1px; font-size:14px; word-break:break-all;">Chargement...</div>
+                    <button onclick="copyPeerId()" style="margin-top:5px; background:rgba(34, 197, 94, 0.3); border:none; color:white; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">COPIER</button>
+                </div>
+
                 <div class="grid-2" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
                     <div><div class="font-bold" style="font-size: 28px; color: var(--primary);" id="stat-wins">0</div><div style="font-size: 11px; color: #94a3b8;">Victoires</div></div>
                     <div><div class="font-bold" style="font-size: 28px; color: var(--secondary);" id="stat-games">0</div><div style="font-size: 11px; color: #94a3b8;">Parties</div></div>
@@ -296,8 +331,8 @@
         <div class="modal-body">
             <div id="game-waiting" class="waiting-screen hidden">
                 <div class="radar"></div>
-                <h3 class="font-bold" style="font-size: 20px; margin-bottom: 10px;">Recherche d'adversaire...</h3>
-                <p style="color:#94a3b8;">Connexion au serveur...</p>
+                <h3 class="font-bold" style="font-size: 20px; margin-bottom: 10px;">Attente de l'adversaire...</h3>
+                <p style="color:#94a3b8;">Envoi du défi en cours...</p>
                 <button onclick="closeGame()" class="btn-small btn-danger" style="margin-top: 20px;">Annuler</button>
             </div>
             <div id="game-math" class="hidden text-center" style="width: 100%;"><h2 id="math-problem" style="font-size: 48px; margin-bottom: 30px; font-weight: 800;">10 + 5 = ?</h2><div class="math-grid" id="math-keys"></div></div>
@@ -338,103 +373,333 @@
     </div>
 
     <script>
-        // --- DATA ---
+        // ==========================================
+        // CONFIGURATION FIREBASE (À REMPLIR !)
+        // ==========================================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAhbLyb8DhTzUULX5ZDwRoCLQsAmtQeKAY",
+  authDomain: "hackenconnect.firebaseapp.com",
+  projectId: "hackenconnect",
+  storageBucket: "hackenconnect.firebasestorage.app",
+  messagingSenderId: "766122490497",
+  appId: "1:766122490497:web:9169ea3eb58f6d584d6b80",
+  measurementId: "G-G5DEL7ZMHF"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+        // ==========================================
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.database();
+                console.log("Firebase Connected");
+            } catch (e) {
+                console.error("Firebase Error:", e);
+                alert("Erreur Firebase : Vérifie ta configuration dans le code !");
+            }
+        } else {
+            firebase.app();
+        }
+
+        // --- DATA & PEER JS ---
         let currentUser = null;
-        let db = { users: [], posts: [], chats: {}, challenges: [], matchmaking: [] };
+        let localDB = { friends: [], chats: {} }; // Local storage for friends/chats
         let selectedCode = "+243", selectedFlag = "🇨🇩";
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [] };
+        
+        // PeerJS Variables
+        let peer = null;
+        let myPeerId = null;
+        let connections = {}; 
+        let pendingChallenge = null;
+        let unreadCounts = {};
 
         // --- INIT ---
         window.onload = function() {
-            const savedDB = localStorage.getItem('hacken_db');
-            if (savedDB) db = JSON.parse(savedDB);
+            const savedLocal = localStorage.getItem('hacken_local');
+            if (savedLocal) localDB = JSON.parse(savedLocal);
+            
             const session = sessionStorage.getItem('hacken_user');
-            if (session) { currentUser = JSON.parse(session); showApp(); checkChallenges(); checkMatchmaking(); }
+            if (session) { 
+                currentUser = JSON.parse(session); 
+                initPeer(); 
+                showApp(); 
+                listenToGlobalPosts();
+            }
             document.getElementById('selected-code').innerText = selectedCode;
             document.getElementById('selected-flag').innerText = selectedFlag;
         };
-        function saveDB() { localStorage.setItem('hacken_db', JSON.stringify(db)); }
-        function generateCode() { return 'HK-' + Math.floor(1000 + Math.random() * 9000); }
+        function saveLocal() { localStorage.setItem('hacken_local', JSON.stringify(localDB)); }
 
-        // --- MATCHMAKING ---
-        function checkMatchmaking() {
-            if(!currentUser) return;
-            const myQueue = db.matchmaking.find(m => m.userId === currentUser.id);
-            if(myQueue) {
-                const opponentQueue = db.matchmaking.find(m => m.userId !== currentUser.id && m.game === myQueue.game && !m.opponentId);
-                if(opponentQueue) {
-                    myQueue.opponentId = opponentQueue.userId;
-                    opponentQueue.opponentId = currentUser.id;
-                    saveDB();
-                    const opponent = db.users.find(u => u.id === opponentQueue.userId);
-                    startGame(myQueue.game, opponent);
-                    db.matchmaking = db.matchmaking.filter(m => m.userId !== currentUser.id && m.userId !== opponentQueue.userId);
-                    saveDB();
+        // --- FIREBASE REALTIME LISTENERS ---
+        function listenToGlobalPosts() {
+            const feedContainer = document.getElementById('feed-container');
+            const emptyFeed = document.getElementById('empty-feed');
+            
+            // Listen to 'posts' node in Firebase
+            firebase.database().ref('posts').limitToLast(20).on('value', (snapshot) => {
+                feedContainer.innerHTML = '';
+                let hasPosts = false;
+                
+                snapshot.forEach((childSnapshot) => {
+                    hasPosts = true;
+                    const p = childSnapshot.val();
+                    const postId = childSnapshot.key;
+                    const isLiked = p.likedBy && p.likedBy.includes(currentUser.id);
+                    
+                    const html = `<div class="card animate-fade">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                            <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
+                            <b style="font-size:15px;">${p.user}</b>
+                            <span style="font-size:10px; color:#94a3b8; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:8px;">${p.game}</span>
+                        </div>
+                        <div style="background:rgba(15, 23, 42, 0.5); padding:15px; border-radius:12px; text-align:center; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">${p.user} ${p.action} ${p.opponent}</div>
+                            <div style="font-size:20px; font-weight:800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${p.score}</div>
+                        </div>
+                        <div style="display:flex; gap:20px; font-size:13px; color:#94a3b8;">
+                            <span onclick="toggleLike('${postId}')" style="cursor:pointer;" class="${isLiked ? 'text-secondary' : ''}">
+                                ❤️ <span style="font-weight:600;">${p.likes || 0}</span>
+                            </span>
+                            <span onclick="openComments('${postId}')" style="cursor:pointer;">
+                                💬 <span style="font-weight:600;">${p.comments ? Object.keys(p.comments).length : 0}</span>
+                            </span>
+                        </div>
+                    </div>`;
+                    feedContainer.innerHTML += html;
+                });
+                
+                if(!hasPosts) {
+                    emptyFeed.classList.remove('hidden');
                 } else {
-                    document.getElementById('game-waiting').classList.remove('hidden');
-                    document.querySelectorAll('.modal-body > div:not(#game-waiting)').forEach(d => d.classList.add('hidden'));
-                    setTimeout(checkMatchmaking, 2000);
+                    emptyFeed.classList.add('hidden');
                 }
+            });
+        }
+
+        function toggleLike(postId) {
+            const postRef = firebase.database().ref('posts/' + postId);
+            postRef.transaction((post) => {
+                if (post) {
+                    if (!post.likedBy) post.likedBy = [];
+                    const idx = post.likedBy.indexOf(currentUser.id);
+                    if (idx === -1) {
+                        post.likedBy.push(currentUser.id);
+                        post.likes = (post.likes || 0) + 1;
+                    } else {
+                        post.likedBy.splice(idx, 1);
+                        post.likes = (post.likes || 0) - 1;
+                    }
+                }
+                return post;
+            });
+        }
+
+        function openComments(postId) {
+            activePostId = postId;
+            const list = document.getElementById('comments-list');
+            list.innerHTML = '<div style="text-align:center; padding:20px;">Chargement...</div>';
+            document.getElementById('comments-modal').classList.remove('hidden');
+            document.getElementById('comment-input').value = '';
+            
+            // Listen to comments for this post
+            firebase.database().ref('posts/' + postId + '/comments').on('value', (snapshot) => {
+                list.innerHTML = '';
+                if (!snapshot.exists()) {
+                    list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire.</p>';
+                    return;
+                }
+                snapshot.forEach((child) => {
+                    const c = child.val();
+                    list.innerHTML += `<div class="comment-item"><div class="comment-user">${c.user}</div><div class="comment-text">${c.text}</div></div>`;
+                });
+                list.scrollTop = list.scrollHeight;
+            });
+        }
+        function closeComments() { 
+            document.getElementById('comments-modal').classList.add('hidden'); 
+            if(activePostId) firebase.database().ref('posts/' + activePostId + '/comments').off();
+            activePostId = null; 
+        }
+        function postComment() {
+            const txt = document.getElementById('comment-input').value.trim();
+            if(!txt || !activePostId) return;
+            
+            const newCommentRef = firebase.database().ref('posts/' + activePostId + '/comments').push();
+            newCommentRef.set({
+                user: currentUser.name,
+                text: txt,
+                time: Date.now()
+            });
+            document.getElementById('comment-input').value = '';
+        }
+
+        // --- PEER JS CONNECTION ---
+        function initPeer() {
+            const statusEl = document.getElementById('conn-status');
+            const statusText = document.getElementById('conn-text');
+            const peerId = currentUser.peerId || 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            peer = new Peer(peerId, { debug: 2 });
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                currentUser.peerId = id;
+                updateUser();
+                document.getElementById('profile-peer-id').innerText = id;
+                statusEl.className = 'connection-status status-online';
+                statusText.innerText = 'En Ligne';
+                
+                // Update presence in Firebase
+                firebase.database().ref('users/' + myPeerId).set({
+                    name: currentUser.name,
+                    avatar: currentUser.avatar,
+                    online: true
+                });
+                
+                // Listen for challenges
+                firebase.database().ref('challenges').orderByChild('targetId').equalTo(myPeerId).on('child_added', (snapshot) => {
+                    const data = snapshot.val();
+                    if(!data.accepted && !data.declined) {
+                        pendingChallenge = { ...data, key: snapshot.key };
+                        document.getElementById('notification-text').innerText = `${data.fromName} veut te défier aux ${data.game} !`;
+                        document.getElementById('notification-toast').classList.add('show');
+                    }
+                });
+            });
+
+            peer.on('connection', (conn) => { setupConnection(conn); });
+            peer.on('error', (err) => { statusEl.className = 'connection-status status-offline'; statusText.innerText = 'Erreur'; });
+        }
+
+        function setupConnection(conn) {
+            connections[conn.peer] = conn;
+            conn.on('data', (data) => handleData(data, conn.peer));
+            conn.on('close', () => { delete connections[conn.peer]; updateFriendStatus(conn.peer, false); });
+        }
+
+        function sendToPeer(peerId, data) {
+            if (connections[peerId]) { connections[peerId].send(data); return true; }
+            else {
+                const conn = peer.connect(peerId);
+                setupConnection(conn);
+                setTimeout(() => { if(connections[peerId]) connections[peerId].send(data); }, 1000);
+                return false;
             }
         }
-        function joinMatchmaking(game) {
-            db.matchmaking = db.matchmaking.filter(m => m.userId !== currentUser.id);
-            db.matchmaking.push({ userId: currentUser.id, game: game, opponentId: null, time: Date.now() });
-            saveDB();
-            document.getElementById('game-modal').classList.remove('hidden');
-            document.getElementById('game-waiting').classList.remove('hidden');
-            document.querySelectorAll('.modal-body > div:not(#game-waiting)').forEach(d => d.classList.add('hidden'));
-            setTimeout(checkMatchmaking, 2000);
+
+        function handleData(data, senderId) {
+            if (data.type === 'chat') {
+                if (activeChatId === senderId) {
+                    const key = getChatKey(senderId);
+                    if (!localDB.chats[key]) localDB.chats[key] = [];
+                    localDB.chats[key].push({ sender: senderId, text: data.text, time: Date.now() });
+                    saveLocal();
+                    renderChatMessages();
+                } else {
+                    // Increment badge
+                    unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+                    updateBadges();
+                }
+            } else if (data.type === 'game_move') {
+                if (currentOpponent && currentOpponent.peerId === senderId) processOnlineMove(data);
+            }
         }
+
+        function updateBadges() {
+            const total = Object.values(unreadCounts).reduce((a,b)=>a+b, 0);
+            const badge = document.getElementById('msg-badge');
+            if(total > 0) { badge.innerText = total; badge.classList.remove('hidden'); }
+            else badge.classList.add('hidden');
+        }
+
+        function updateFriendStatus(peerId, online) { renderFriends(); renderOnline(); }
 
         // --- NOTIFICATIONS ---
-        function checkChallenges() {
-            if(!currentUser) return;
-            const myChallenges = db.challenges.filter(c => c.targetId === currentUser.id && !c.accepted && !c.declined);
-            if(myChallenges.length > 0) {
-                currentChallenge = myChallenges[0];
-                const challenger = db.users.find(u => u.id === currentChallenge.sourceId);
-                document.getElementById('notification-text').innerText = `${challenger.name} veut te défier !`;
-                document.getElementById('notification-toast').classList.add('show');
-            }
-        }
-        function closeNotification() { document.getElementById('notification-toast').classList.remove('show'); currentChallenge = null; }
+        function closeNotification() { document.getElementById('notification-toast').classList.remove('show'); pendingChallenge = null; }
         function acceptChallenge() {
-            if(currentChallenge) {
-                currentChallenge.accepted = true; saveDB();
+            if(pendingChallenge) {
+                // Mark as accepted in Firebase
+                firebase.database().ref('challenges/' + pendingChallenge.key).update({ accepted: true });
+                startGame(pendingChallenge.game, { name: pendingChallenge.fromName, avatar: pendingChallenge.fromAvatar, peerId: pendingChallenge.fromPeerId });
                 document.getElementById('notification-toast').classList.remove('show');
-                startGame(currentChallenge.game, db.users.find(u => u.id === currentChallenge.sourceId));
-                currentChallenge = null;
+                pendingChallenge = null;
             }
         }
-        function sendChallenge(targetId, game) {
-            db.challenges.push({ id: Date.now(), sourceId: currentUser.id, targetId: targetId, game: game, accepted: false, declined: false });
-            saveDB(); alert(`Défi envoyé à ${db.users.find(u => u.id === targetId).name} !`); closeModeModal();
+        function sendChallenge(targetPeerId, targetName, targetAvatar, game) {
+            firebase.database().ref('challenges').push({
+                fromName: currentUser.name,
+                fromAvatar: currentUser.avatar,
+                fromPeerId: myPeerId,
+                targetId: targetPeerId,
+                game: game,
+                accepted: false,
+                declined: false,
+                timestamp: Date.now()
+            }).then(() => {
+                alert(`Défi envoyé à ${targetName} !`);
+                closeModeModal();
+            });
         }
 
         // --- AUTH ---
         function toggleCountry() { document.getElementById('country-list').style.display = document.getElementById('country-list').style.display === 'block' ? 'none' : 'block'; }
         function setCountry(code, flag) { selectedCode = code; selectedFlag = flag; document.getElementById('selected-code').innerText = code; document.getElementById('selected-flag').innerText = flag; document.getElementById('country-list').style.display = 'none'; document.getElementById('phone-input').focus(); }
         document.addEventListener('click', (e) => { if (!document.getElementById('country-btn').contains(e.target) && !document.getElementById('country-list').contains(e.target)) document.getElementById('country-list').style.display = 'none'; });
+        
         function handleLogin() {
             const phone = document.getElementById('phone-input').value.replace(/\s/g, '');
             if (phone.length < 5) { document.getElementById('error-msg').style.display = 'block'; return; }
             document.getElementById('error-msg').style.display = 'none';
             const fullPhone = selectedCode + phone;
-            let user = db.users.find(u => u.phone === fullPhone);
-            if (!user) { 
-                user = { id: Date.now().toString(), name: "Joueur " + phone.slice(-3), phone: fullPhone, code: generateCode(), avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", wins: 0, games: 0, friends: [], lastSeen: Date.now() }; 
-                db.users.push(user); saveDB(); 
-            }
-            currentUser = user; sessionStorage.setItem('hacken_user', JSON.stringify(user)); showApp();
+            
+            // Check if user exists in Firebase or create new
+            // For simplicity in this demo, we create locally and sync peerID
+            let user = { id: Date.now().toString(), name: "Joueur " + phone.slice(-3), phone: fullPhone, avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", wins: 0, games: 0, peerId: null };
+            
+            currentUser = user; 
+            sessionStorage.setItem('hacken_user', JSON.stringify(user)); 
+            initPeer(); 
+            showApp();
         }
-        function showApp() { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-container').classList.remove('hidden'); updateUI(); renderFeed(); renderFriends(); renderOnline(); }
-        function updateUI() { if(!currentUser) return; document.getElementById('header-name').innerText = currentUser.name; document.getElementById('profile-name').innerText = currentUser.name; document.getElementById('profile-code').innerText = currentUser.code || generateCode(); document.getElementById('header-avatar').src = currentUser.avatar; document.getElementById('profile-avatar').src = currentUser.avatar; document.getElementById('stat-wins').innerText = currentUser.wins; document.getElementById('stat-games').innerText = currentUser.games; document.getElementById('profile-level').innerText = Math.floor(currentUser.wins / 5) + 1; }
+        
+        function showApp() { 
+            document.getElementById('login-screen').classList.add('hidden'); 
+            document.getElementById('app-container').classList.remove('hidden'); 
+            updateUI(); 
+            renderFriends(); 
+            renderOnline(); 
+        }
+        
+        function updateUI() { 
+            if(!currentUser) return; 
+            document.getElementById('header-name').innerText = currentUser.name; 
+            document.getElementById('profile-name').innerText = currentUser.name; 
+            if(myPeerId) document.getElementById('profile-peer-id').innerText = myPeerId; 
+            document.getElementById('header-avatar').src = currentUser.avatar; 
+            document.getElementById('profile-avatar').src = currentUser.avatar; 
+            document.getElementById('stat-wins').innerText = currentUser.wins; 
+            document.getElementById('stat-games').innerText = currentUser.games; 
+        }
+        
         function logout() { 
-            const idx = db.users.findIndex(u => u.id === currentUser.id);
-            if(idx !== -1) { db.users[idx].lastSeen = Date.now(); saveDB(); }
-            sessionStorage.removeItem('hacken_user'); location.reload(); 
+            if(peer) peer.destroy(); 
+            if(myPeerId) firebase.database().ref('users/' + myPeerId).remove();
+            sessionStorage.removeItem('hacken_user'); 
+            location.reload(); 
         }
 
         // --- NAV & FRIENDS ---
@@ -443,31 +708,28 @@
             const target = document.getElementById(viewId.startsWith('view-') ? viewId : 'view-' + viewId);
             if(target) target.classList.add('active'); 
             if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); } 
+            if(viewId === 'view-chatlist') { unreadCounts = {}; updateBadges(); }
         }
         
-        function isOnline(user) { return (Date.now() - user.lastSeen) < 60000; }
-
         function renderFriends() { 
             const list = document.getElementById('friends-list'); 
-            if (!currentUser || currentUser.friends.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun ami.</p>'; return; } 
-            list.innerHTML = currentUser.friends.map(fid => { 
-                const f = db.users.find(u => u.id === fid); 
-                if(!f) return ''; 
-                const online = isOnline(f);
+            if (!localDB.friends || localDB.friends.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun ami ajouté.</p>'; return; } 
+            list.innerHTML = localDB.friends.map(f => { 
+                const isOnline = !!connections[f.peerId];
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="position:relative;">
                             <img src="${f.avatar}" class="avatar">
-                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${online ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
                         <div>
                             <b style="font-size:15px; display:block;">${f.name}</b>
-                            <span style="font-size:10px; color:${online ? '#22c55e' : '#ef4444'}">${online ? 'En ligne' : 'Hors ligne'}</span>
+                            <span style="font-size:10px; color:${isOnline ? '#22c55e' : '#ef4444'}">${isOnline ? 'En ligne' : 'Hors ligne'}</span>
                         </div>
                     </div>
                     <div style="display:flex; gap:5px;">
-                        <button onclick="openChat('${f.id}')" class="btn-small btn-primary">💬</button>
-                        <button onclick="openModeModal('math', '${f.id}')" class="btn-small btn-success">⚔️</button>
+                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-primary">💬</button>
+                        ${isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : '<span style="font-size:10px; color:#64748b;">Offline</span>'}
                     </div>
                 </div>`; 
             }).join(''); 
@@ -477,170 +739,94 @@
             const q = document.getElementById('search-input').value.toLowerCase(); 
             const list = document.getElementById('friends-list'); 
             if (q.length < 2) { renderFriends(); return; } 
-            const matches = db.users.filter(u => u.id !== currentUser.id && u.name.toLowerCase().includes(q)); 
+            const matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q)); 
             list.innerHTML = matches.map(u => { 
-                const isFriend = currentUser.friends.includes(u.id); 
-                const online = isOnline(u);
+                const isOnline = !!connections[u.peerId];
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="position:relative;">
                             <img src="${u.avatar}" class="avatar">
-                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${online ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
                         <b style="font-size:15px;">${u.name}</b>
                     </div>
-                    ${isFriend ? '<span style="color:#94a3b8; font-size:12px;">✓ Ami</span>' : `<button onclick="addFriend('${u.id}')" class="btn-small btn-success">+ Ajouter</button>`}
+                    <span style="color:#94a3b8; font-size:12px;">✓ Ami</span>
                 </div>`; 
             }).join(''); 
         }
         
-        function addFriend(fid) { if (!currentUser.friends.includes(fid)) { currentUser.friends.push(fid); updateUser(); renderFriends(); alert("✅ Ami ajouté !"); } }
-        function addFriendByCode() {
-            const code = document.getElementById('add-friend-code').value.trim();
-            const friend = db.users.find(u => u.code === code);
-            if(friend) {
-                if(friend.id === currentUser.id) { alert("Tu ne peux pas t'ajouter toi-même !"); return; }
-                if(currentUser.friends.includes(friend.id)) { alert("Déjà ami !"); return; }
-                addFriend(friend.id);
-                document.getElementById('add-friend-code').value = '';
-            } else {
-                alert("Code invalide ou utilisateur introuvable.");
-            }
+        function addFriendByID() {
+            const pid = document.getElementById('add-friend-id').value.trim();
+            if(!pid) return;
+            if(pid === myPeerId) { alert("Tu ne peux pas t'ajouter toi-même !"); return; }
+            if(localDB.friends.find(f => f.peerId === pid)) { alert("Déjà ami !"); return; }
+            
+            const conn = peer.connect(pid);
+            conn.on('open', () => {
+                localDB.friends.push({ peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" });
+                saveLocal();
+                renderFriends();
+                alert("Ami ajouté !");
+                conn.close();
+            });
+            conn.on('error', () => alert("ID invalide ou hors ligne."));
         }
         
-        function updateUser() { if(!currentUser) return; const idx = db.users.findIndex(u => u.id === currentUser.id); if (idx !== -1) { db.users[idx] = currentUser; saveDB(); sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); } }
+        function updateUser() { if(!currentUser) return; sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
         function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); updateUI(); } }
         function updateAvatar(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => { currentUser.avatar = e.target.result; updateUser(); updateUI(); }; reader.readAsDataURL(input.files[0]); } }
-        function renderOnline() { const online = db.users.filter(u => u.id !== currentUser.id).slice(0, 5); document.getElementById('online-list').innerHTML = online.map(u => {
-            const isOn = isOnline(u);
-            return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 12px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="position:relative;">
-                        <img src="${u.avatar}" class="avatar">
-                        <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOn ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+        
+        function renderOnline() { 
+            const onlineFriends = localDB.friends.filter(f => connections[f.peerId]);
+            document.getElementById('online-list').innerHTML = onlineFriends.map(u => `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="position:relative;">
+                            <img src="${u.avatar}" class="avatar">
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:#22c55e; border-radius:50%; border:2px solid var(--card);"></div>
+                        </div>
+                        <div>
+                            <b style="font-size:15px; display:block;">${u.name}</b>
+                            <span style="font-size:10px; color:#22c55e">En ligne</span>
+                        </div>
                     </div>
-                    <div>
-                        <b style="font-size:15px; display:block;">${u.name}</b>
-                        <span style="font-size:10px; color:${isOn ? '#22c55e' : '#ef4444'}">${isOn ? 'En ligne' : 'Hors ligne'}</span>
-                    </div>
+                    <button onclick="openModeModal('math', '${u.peerId}', '${u.name}', '${u.avatar}')" class="btn-small btn-primary">⚔️ Défier</button>
                 </div>
-                <button onclick="openModeModal('math', '${u.id}')" class="btn-small btn-primary">⚔️ Défier</button>
-            </div>`;
-        }).join(''); }
-
-        // --- FEED & COMMENTS ---
-        function createPost(winner, loser, score, game) { if(!winner || !loser) return; db.posts.unshift({ id: Date.now(), userId: winner.id, user: winner.name, avatar: winner.avatar, action: "a gagné contre", opponent: loser.name, score: score, game: game, likes: 0, likedBy: [], comments: [] }); saveDB(); renderFeed(); }
-        
-        function renderFeed() { 
-            const container = document.getElementById('feed-container'); 
-            if (!db.posts || db.posts.length === 0) { document.getElementById('empty-feed').classList.remove('hidden'); container.innerHTML = ''; return; } 
-            document.getElementById('empty-feed').classList.add('hidden'); 
-            container.innerHTML = db.posts.map(p => {
-                const isLiked = p.likedBy && p.likedBy.includes(currentUser.id);
-                return `<div class="card animate-fade">
-                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                        <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
-                        <b style="font-size:15px;">${p.user}</b>
-                        <span style="font-size:10px; color:#94a3b8; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:8px;">${p.game}</span>
-                    </div>
-                    <div style="background:rgba(15, 23, 42, 0.5); padding:15px; border-radius:12px; text-align:center; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);">
-                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">${p.user} ${p.action} ${p.opponent}</div>
-                        <div style="font-size:20px; font-weight:800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${p.score}</div>
-                    </div>
-                    <div style="display:flex; gap:20px; font-size:13px; color:#94a3b8;">
-                        <span onclick="toggleLike(${p.id})" style="cursor:pointer;" class="${isLiked ? 'text-secondary' : ''}">
-                            ❤️ <span style="font-weight:600;">${p.likes}</span>
-                        </span>
-                        <span onclick="openComments(${p.id})" style="cursor:pointer;">
-                            💬 <span style="font-weight:600;">${p.comments ? p.comments.length : 0}</span>
-                        </span>
-                    </div>
-                </div>`;
-            }).join(''); 
-        }
-        
-        function toggleLike(postId) { 
-            const p = db.posts.find(x => x.id === postId); 
-            if(p) { 
-                if(!p.likedBy) p.likedBy = [];
-                const idx = p.likedBy.indexOf(currentUser.id);
-                if(idx === -1) { 
-                    p.likedBy.push(currentUser.id); 
-                    p.likes = (p.likes || 0) + 1; 
-                } else { 
-                    p.likedBy.splice(idx, 1); 
-                    p.likes = (p.likes || 0) - 1; 
-                }
-                saveDB(); 
-                renderFeed(); 
-            } 
+            `).join('');
+            if(onlineFriends.length === 0) document.getElementById('online-list').innerHTML = '<p style="color:#64748b; text-align:center;">Aucun ami en ligne.</p>';
         }
 
-        function openComments(postId) {
-            activePostId = postId;
-            const p = db.posts.find(x => x.id === postId);
-            const list = document.getElementById('comments-list');
-            if(!p.comments || p.comments.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire. Sois le premier !</p>';
-            } else {
-                list.innerHTML = p.comments.map(c => `
-                    <div class="comment-item">
-                        <div class="comment-user">${c.user}</div>
-                        <div class="comment-text">${c.text}</div>
-                    </div>
-                `).join('');
-            }
-            document.getElementById('comments-modal').classList.remove('hidden');
-            document.getElementById('comment-input').value = '';
-            document.getElementById('comment-input').focus();
-        }
-
-        function closeComments() {
-            document.getElementById('comments-modal').classList.add('hidden');
-            activePostId = null;
-        }
-
-        function postComment() {
-            const txt = document.getElementById('comment-input').value.trim();
-            if(!txt || !activePostId) return;
-            const p = db.posts.find(x => x.id === activePostId);
-            if(p) {
-                if(!p.comments) p.comments = [];
-                p.comments.push({ user: currentUser.name, text: txt, time: Date.now() });
-                saveDB();
-                openComments(activePostId); // Refresh list
-                renderFeed(); // Update count
-            }
-        }
+        function copyPeerId() { navigator.clipboard.writeText(myPeerId).then(() => alert("ID copié !")); }
 
         // --- CHAT LIST ---
         function openChatList() {
             const list = document.getElementById('full-chat-list');
-            // Get all users I have chatted with
-            const chatKeys = Object.keys(db.chats);
-            const myChats = chatKeys.filter(key => key.includes(currentUser.id));
-            
-            if(myChats.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation commencée.</p>';
-            } else {
-                list.innerHTML = myChats.map(key => {
+            const chatKeys = Object.keys(localDB.chats);
+            if(chatKeys.length === 0) { list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation.</p>'; }
+            else {
+                list.innerHTML = chatKeys.map(key => {
                     const ids = key.split('_');
-                    const otherId = ids.find(id => id !== currentUser.id);
-                    const friend = db.users.find(u => u.id === otherId);
+                    const otherId = ids.find(id => id !== currentUser.id && id !== myPeerId);
+                    if(!otherId) return '';
+                    const friend = localDB.friends.find(f => f.peerId === otherId);
                     if(!friend) return '';
-                    const msgs = db.chats[key];
+                    const msgs = localDB.chats[key];
                     const lastMsg = msgs[msgs.length-1];
                     const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const count = unreadCounts[otherId] || 0;
                     
-                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.id}')">
+                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.peerId}')">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${friend.avatar}" class="avatar">
                             <div>
                                 <b style="font-size:15px; display:block;">${friend.name}</b>
-                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === currentUser.id ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
+                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === myPeerId ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
                             </div>
                         </div>
-                        <span style="font-size:10px; color:#64748b;">${time}</span>
+                        <div style="text-align:right;">
+                            <span style="font-size:10px; color:#64748b;">${time}</span>
+                            ${count > 0 ? `<div class="badge" style="position:relative; top:0; right:0; margin-top:5px;">${count}</div>` : ''}
+                        </div>
                     </div>`;
                 }).join('');
             }
@@ -648,11 +834,24 @@
         }
 
         // --- MODE SELECTION ---
-        function openModeModal(game, friendId = null) { selectedGameType = game; document.getElementById('selected-game-name').innerText = game.toUpperCase(); document.getElementById('mode-modal').classList.remove('hidden'); window.tempFriendId = friendId; }
-        function closeModeModal() { document.getElementById('mode-modal').classList.add('hidden'); window.tempFriendId = null; }
-        function selectMode(mode) { selectedMode = mode; closeModeModal(); if (mode === 'bot') { startGame(selectedGameType, { name: "Bot IA", avatar: "https://ui-avatars.com/api/?name=Bot&background=333" }); } else if (mode === 'friend') { if(window.tempFriendId) { sendChallenge(window.tempFriendId, selectedGameType); } else { const fid = prompt("Entre l'ID ou le nom de l'ami:"); if(fid) { const friend = db.users.find(u => u.name.toLowerCase() === fid.toLowerCase() || u.id === fid); if(friend) sendChallenge(friend.id, selectedGameType); else alert("Ami non trouvé !"); } } } else if (mode === 'random') { joinMatchmaking(selectedGameType); } }
+        function openModeModal(game, friendPeerId = null, friendName = null, friendAvatar = null) { 
+            selectedGameType = game; 
+            document.getElementById('selected-game-name').innerText = game.toUpperCase(); 
+            document.getElementById('mode-modal').classList.remove('hidden'); 
+            window.tempFriendData = friendPeerId ? { peerId: friendPeerId, name: friendName, avatar: friendAvatar } : null; 
+        }
+        function closeModeModal() { document.getElementById('mode-modal').classList.add('hidden'); window.tempFriendData = null; }
+        function selectMode(mode) { 
+            selectedMode = mode; 
+            closeModeModal(); 
+            if (mode === 'bot') { startGame(selectedGameType, { name: "Bot IA", avatar: "https://ui-avatars.com/api/?name=Bot&background=333" }); } 
+            else if (mode === 'friend') { 
+                if(window.tempFriendData) { sendChallenge(window.tempFriendData.peerId, window.tempFriendData.name, window.tempFriendData.avatar, selectedGameType); } 
+                else { alert("Sélectionne un ami en ligne."); } 
+            } 
+        }
 
-        // --- GAMES ---
+        // --- GAMES (Simplified) ---
         function startGame(type, opponent) {
             const modal = document.getElementById('game-modal'); modal.classList.remove('hidden');
             currentOpponent = opponent;
@@ -671,16 +870,28 @@
             else if (type === 'memory') { document.getElementById('game-title').innerText = "MÉMOIRE"; document.getElementById('game-memory').classList.remove('hidden'); initMemory(); }
             else if (type === 'penalty') { document.getElementById('game-title').innerText = "FOOT"; document.getElementById('game-penalty').classList.remove('hidden'); document.getElementById('penalty-result').innerText = ""; }
         }
-        function closeGame() { document.getElementById('game-modal').classList.add('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); db.matchmaking = db.matchmaking.filter(m => m.userId !== currentUser.id); saveDB(); }
-        function addFriendFromGame() { if(currentOpponent && currentOpponent.id) { addFriend(currentOpponent.id); document.getElementById('add-friend-btn').classList.add('hidden'); } }
-        function finishGame(win, type) { if(!currentUser) return; currentUser.games++; if (win) { currentUser.wins++; alert("🏆 VICTOIRE !"); let scoreText = "Gagné !"; if(type === 'speed') scoreText = gameVars.speedScore + " clics"; createPost(currentUser, currentOpponent, scoreText, type); document.getElementById('add-friend-btn').classList.remove('hidden'); } else { alert("😢 PERDU !"); } updateUser(); updateUI(); }
+        function closeGame() { document.getElementById('game-modal').classList.add('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); }
+        function addFriendFromGame() { if(currentOpponent && currentOpponent.peerId) { /* Add logic */ } }
+        function finishGame(win, type) { if(!currentUser) return; currentUser.games++; if (win) { currentUser.wins++; alert("🏆 VICTOIRE !"); let scoreText = "Gagné !"; if(type === 'speed') scoreText = gameVars.speedScore + " clics"; createPost(currentUser, currentOpponent, scoreText, type); } else { alert("😢 PERDU !"); } updateUser(); updateUI(); }
+
+        function sendMove(moveData) { if(currentOpponent && currentOpponent.peerId) sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData }); }
+        function processOnlineMove(data) { console.log("Processing move:", data); }
+
+        function createPost(winner, loser, score, game) { 
+            if(!winner || !loser) return; 
+            firebase.database().ref('posts').push({
+                userId: winner.id, user: winner.name, avatar: winner.avatar, 
+                action: "a gagné contre", opponent: loser.name, score: score, game: game, 
+                likes: 0, likedBy: [], comments: {}, timestamp: Date.now()
+            });
+        }
 
         // Math
         function initMath() { const n1 = Math.floor(Math.random() * 20) + 1, n2 = Math.floor(Math.random() * 20) + 1; gameVars.mathAns = n1 + n2; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; const keys = ['1','2','3','C','4','5','6','0','7','8','9','=']; const container = document.getElementById('math-keys'); container.innerHTML = ''; let currentVal = ''; keys.forEach(k => { const btn = document.createElement('button'); btn.innerText = k; btn.className = 'math-key ' + (k === '=' ? 'eq' : (k === 'C' ? 'op' : '')); btn.onclick = () => { if (k === '=') { if (parseInt(currentVal) === gameVars.mathAns) finishGame(true, 'math'); else { alert("Faux !"); initMath(); } } else if (k === 'C') { currentVal = ''; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; } else { currentVal += k; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ${currentVal}`; } }; container.appendChild(btn); }); }
         // TTT
         function initTTT() { gameVars.tttBoard = ['', '', '', '', '', '', '', '', '']; gameVars.tttActive = true; document.getElementById('ttt-status').innerText = "À TOI (X)"; renderTTT(); }
         function renderTTT() { const board = document.getElementById('ttt-board'); board.innerHTML = gameVars.tttBoard.map((c, i) => `<div class="ttt-cell" style="background:var(--input); aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; border-radius:8px; cursor:pointer;" onclick="move(${i})">${c}</div>`).join(''); }
-        function move(i) { if (!gameVars.tttActive || gameVars.tttBoard[i]) return; gameVars.tttBoard[i] = 'X'; renderTTT(); if (checkWin('X')) { finishGame(true, 'ttt'); gameVars.tttActive = false; return; } setTimeout(() => { const empty = gameVars.tttBoard.map((v, idx) => v === '' ? idx : null).filter(v => v !== null); if (empty.length) { gameVars.tttBoard[empty[Math.floor(Math.random() * empty.length)]] = 'O'; renderTTT(); if (checkWin('O')) { finishGame(false, 'ttt'); gameVars.tttActive = false; } } }, 600); }
+        function move(i) { if (!gameVars.tttActive || gameVars.tttBoard[i]) return; gameVars.tttBoard[i] = 'X'; renderTTT(); sendMove({ type: 'ttt', index: i, value: 'X' }); if (checkWin('X')) { finishGame(true, 'ttt'); gameVars.tttActive = false; return; } setTimeout(() => { const empty = gameVars.tttBoard.map((v, idx) => v === '' ? idx : null).filter(v => v !== null); if (empty.length) { gameVars.tttBoard[empty[Math.floor(Math.random() * empty.length)]] = 'O'; renderTTT(); if (checkWin('O')) { finishGame(false, 'ttt'); gameVars.tttActive = false; } } }, 600); }
         function checkWin(p) { const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return wins.some(c => c.every(i => gameVars.tttBoard[i] === p)); }
         function resetTTT() { initTTT(); }
         // Speed
@@ -701,15 +912,16 @@
         function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
 
         // --- CHAT ---
-        function openChat(fid) { 
-            activeChatId = fid; 
-            const friend = db.users.find(u => u.id === fid); 
+        function openChat(peerId) { 
+            activeChatId = peerId; 
+            const friend = localDB.friends.find(u => u.peerId === peerId); 
             if(!friend) return; 
             document.getElementById('chat-header-name').innerText = friend.name; 
             document.getElementById('chat-header-img').src = friend.avatar; 
             const statusEl = document.getElementById('chat-status');
-            if(isOnline(friend)) { statusEl.innerText = "● En ligne"; statusEl.style.color = "#4ade80"; }
+            if(connections[peerId]) { statusEl.innerText = "● En ligne"; statusEl.style.color = "#4ade80"; }
             else { statusEl.innerText = "● Hors ligne"; statusEl.style.color = "#ef4444"; }
+            
             const bgContainer = document.getElementById('chat-bg-container');
             bgContainer.innerHTML = '';
             for(let i=0; i<15; i++) {
@@ -726,24 +938,25 @@
             renderChatMessages(); 
         }
         function closeChat() { document.getElementById('chat-interface').classList.add('hidden'); activeChatId = null; }
-        function getChatKey() { if(!currentUser || !activeChatId) return ''; const ids = [currentUser.id, activeChatId].sort(); return ids.join('_'); }
+        function getChatKey(pid) { if(!currentUser || !pid) return ''; const ids = [currentUser.id, myPeerId, pid].filter(Boolean).sort(); return ids.join('_'); }
         function renderChatMessages() { 
-            const key = getChatKey(); 
-            const messages = db.chats[key] || []; 
+            const key = getChatKey(activeChatId); 
+            const messages = localDB.chats[key] || []; 
             const container = document.getElementById('chat-messages'); 
-            container.innerHTML = messages.map((m, index) => `<div class="message-bubble ${m.sender===currentUser.id?'msg-me':'msg-other'} msg-anim" style="animation-delay:${index*0.05}s">${m.text}</div>`).join(''); 
+            container.innerHTML = messages.map((m, index) => `<div class="message-bubble ${m.sender===myPeerId?'msg-me':'msg-other'} msg-anim" style="animation-delay:${index*0.05}s">${m.text}</div>`).join(''); 
             container.scrollTop = container.scrollHeight; 
         }
         function sendMessage() { 
             const input = document.getElementById('chat-input'); 
             const text = input.value.trim(); 
             if (!text || !activeChatId) return; 
-            const key = getChatKey(); 
-            if (!db.chats[key]) db.chats[key] = []; 
-            db.chats[key].push({ sender: currentUser.id, text: text, time: Date.now() }); 
-            saveDB(); 
+            const key = getChatKey(activeChatId); 
+            if (!localDB.chats[key]) localDB.chats[key] = []; 
+            localDB.chats[key].push({ sender: myPeerId, text: text, time: Date.now() }); 
+            saveLocal(); 
             input.value = ''; 
             renderChatMessages(); 
+            sendToPeer(activeChatId, { type: 'chat', text: text });
         }
         function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
     </script>
