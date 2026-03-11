@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HACKEN CONNECT - GLOBAL</title>
+    <!-- PeerJS for P2P Chat/Games -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs (Version Compatible Web Simple) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #6366f1; --secondary: #ec4899; --dark: #0f172a; --card: #1e293b; --input: #334155; }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--dark); color: white; margin: 0; overflow-x: hidden; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        @keyframes bgMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes floatParticle { 0% { transform: translateY(0) rotate(0deg); opacity: 0.5; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
+        
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .msg-anim { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        /* Utilities */
+        .hidden { display: none !important; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; }
+        .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(5px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
+        .btn-small { padding: 8px 16px; border-radius: 12px; border: none; font-weight: 700; font-size: 12px; cursor: pointer; transition: transform 0.2s; }
+        .btn-small:active { transform: scale(0.95); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        
+        /* Login */
+        .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at top right, #1e1b4b, #0f172a); }
+        .login-box { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 24px; padding: 30px; width: 100%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); }
+        .input-group { background: var(--input); border-radius: 16px; padding: 6px; display: flex; align-items: center; margin-bottom: 20px; position: relative; }
+        .search-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .country-btn { background: transparent; border: none; color: white; font-weight: bold; padding: 12px; outline: none; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .phone-input { background: transparent; border: none; color: white; flex: 1; padding: 12px; outline: none; font-size: 16px; }
+        .btn-login { background: linear-gradient(135deg, var(--primary), var(--secondary)); width: 100%; padding: 16px; border: none; border-radius: 16px; color: white; font-weight: 800; font-size: 16px; cursor: pointer; }
+        
+        /* Country Dropdown */
+        .country-wrapper { position: relative; z-index: 100; }
+        #country-list { position: absolute; bottom: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #475569; border-radius: 12px; max-height: 300px; overflow-y: auto; display: none; margin-bottom: 8px; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        .country-option { padding: 12px 15px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; }
+        .country-option:hover { background: #334155; }
+        
+        /* App Layout */
+        .app-container { min-height: 100vh; display: flex; flex-direction: column; }
+        .header { padding: 15px 20px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 30; }
+        .view { display: none; padding: 20px; padding-bottom: 90px; flex: 1; animation: fadeIn 0.4s ease; }
+        .view.active { display: block; }
+        
+        /* Navigation */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-around; padding: 12px 10px; z-index: 40; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+        .nav-item { color: #64748b; text-align: center; font-size: 11px; cursor: pointer; }
+        .nav-item.active { color: var(--primary); transform: translateY(-5px); }
+        .nav-icon { font-size: 22px; margin-bottom: 4px; display: block; }
+        
+        /* Game Modal */
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(5px); z-index: 60; display: flex; flex-direction: column; animation: slideUp 0.4s; }
+        .modal-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+        .modal-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 15px; background: rgba(30, 41, 59, 0.5); }
+        
+        /* Game Specifics */
+        .math-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 320px; }
+        .math-key { padding: 18px; border-radius: 16px; border: none; color: white; font-weight: 800; font-size: 20px; cursor: pointer; background: var(--input); }
+        .math-key.op { background: var(--primary); }
+        .math-key.eq { background: var(--secondary); grid-column: span 2; }
+        .click-btn { width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, #ef4444, #b91c1c); border: 6px solid #7f1d1d; color: white; font-size: 20px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .rps-btn { font-size: 40px; background: var(--input); border: none; border-radius: 12px; padding: 15px; cursor: pointer; }
+        .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 300px; }
+        .memory-card { aspect-ratio: 1; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; }
+        .memory-card.flipped { background: white; color: black; }
+        
+        /* Waiting Screen */
+        .waiting-screen { text-align: center; animation: fadeIn 0.5s; }
+        .radar { width: 100px; height: 100px; border: 4px solid #22c55e; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        /* Chat - Animated Background */
+        .chat-interface { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-bg { position: absolute; inset: 0; z-index: -1; background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #0f172a); background-size: 400% 400%; animation: bgMove 15s ease infinite; }
+        .chat-particle { position: absolute; width: 10px; height: 10px; background: rgba(99, 102, 241, 0.3); border-radius: 50%; animation: floatParticle 5s infinite linear; }
+        
+        .chat-header { padding: 15px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; z-index: 10; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 10; scroll-behavior: smooth; }
+        .chat-input-area { padding: 10px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; align-items: center; z-index: 10; }
+        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 14px; position: relative; }
+        .msg-me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+        .msg-other { align-self: flex-start; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); color: white; border-bottom-left-radius: 2px; }
+        
+        /* Notification */
+        .notification-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 15px 25px; border-radius: 50px; z-index: 100; transition: transform 0.4s; }
+        .notification-toast.show { transform: translateX(-50%) translateY(0); }
+        
+        /* Mode Modal */
+        .mode-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 70; display: flex; align-items: center; justify-content: center; }
+        .mode-card { background: var(--card); padding: 30px; border-radius: 24px; width: 90%; max-width: 350px; text-align: center; }
+        .mode-option { background: var(--input); padding: 15px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
+        .mode-option:hover { background: rgba(99, 102, 241, 0.2); }
+
+        /* Comments Modal */
+        .comments-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 80; display: flex; align-items: flex-end; }
+        .comments-card { background: var(--card); width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 70vh; display: flex; flex-direction: column; animation: slideUp 0.3s; }
+        .comment-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; }
+        .comment-user { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
+        .comment-text { font-size: 13px; color: #e2e8f0; }
+        
+        /* Connection Status */
+        .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; z-index: 90; display: flex; align-items: center; gap: 5px; }
+        .status-online { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+        .status-offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .status-connecting { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
+        
+        /* Badge */
+        .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <!-- CONNECTION STATUS -->
+    <div id="conn-status" class="connection-status status-connecting">
+        <div style="width:8px; height:8px; background:currentColor; border-radius:50%; animation: pulse-green 1s infinite;"></div>
+        <span id="conn-text">Connexion...</span>
+    </div>
+
+    <!-- NOTIFICATION -->
+    <div id="notification-toast" class="notification-toast" onclick="acceptChallenge()">
+        <span>⚔️</span> <span id="notification-text">Défi reçu !</span>
+        <button style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:50%; width:20px; height:20px; margin-left:10px;" onclick="closeNotification()">✕</button>
+    </div>
+
+    <!-- MODE SELECTION -->
+    <div id="mode-modal" class="mode-modal hidden">
+        <div class="mode-card">
+            <h2 class="font-bold" style="font-size: 20px; margin-bottom: 5px;">Choisis ton adversaire</h2>
+            <p style="color:#94a3b8; font-size: 12px; margin-bottom: 20px;">Pour <span id="selected-game-name" class="text-primary font-bold">...</span></p>
+            <div class="mode-option" onclick="selectMode('bot')"><span>🤖</span><div style="text-align:left;"><div class="font-bold">Contre Bot</div><div style="font-size:10px; color:#94a3b8;">Entraînement</div></div></div>
+            <div class="mode-option" onclick="selectMode('friend')"><span>👥</span><div style="text-align:left;"><div class="font-bold">Contre Ami (En Ligne)</div><div style="font-size:10px; color:#94a3b8;">Défie tes contacts</div></div></div>
+            <button onclick="closeModeModal()" style="margin-top:15px; background:transparent; border:none; color:#94a3b8; cursor:pointer;">Annuler</button>
+        </div>
+    </div>
+
+    <!-- COMMENTS MODAL -->
+    <div id="comments-modal" class="comments-modal hidden" onclick="if(event.target === this) closeComments()">
+        <div class="comments-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 class="font-bold" style="font-size:18px;">Commentaires</h3>
+                <button onclick="closeComments()" style="background:none; border:none; color:white; font-size:20px;">✕</button>
+            </div>
+            <div id="comments-list" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="comment-input" placeholder="Écrire un commentaire..." style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none;">
+                <button onclick="postComment()" class="btn-small btn-primary">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-screen" class="login-screen animate-fade">
+        <div class="text-center mb-8">
+            <div style="font-size: 60px; margin-bottom: 15px;">🎮</div>
+            <h1 style="font-size: 32px; font-weight: 800; margin: 0;">HACKEN CONNECT</h1>
+            <p style="color: #94a3b8; margin: 5px 0 0 0;">GLOBAL EDITION</p>
+        </div>
+        <div class="login-box animate-fade">
+            <label style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 12px;">Connexion</label>
+            <div class="input-group">
+                <div class="country-wrapper" style="width: auto;">
+                    <button id="country-btn" class="country-btn" onclick="toggleCountry()">
+                        <span id="selected-flag" style="font-size: 20px;">🇨🇩</span> 
+                        <span id="selected-code" style="font-size: 14px;">+243</span> ▼
+                    </button>
+                    <div id="country-list">
+                        <div class="country-option" onclick="setCountry('+243', '🇨🇩')"><span><b>+243</b> RDC</span> 🇨🇩</div>
+                        <div class="country-option" onclick="setCountry('+33', '🇫🇷')"><span><b>+33</b> France</span> 🇫🇷</div>
+                        <div class="country-option" onclick="setCountry('+228', '🇹🇬')"><span><b>+228</b> Togo</span> 🇹🇬</div>
+                        <div class="country-option" onclick="setCountry('+225', '🇨🇮')"><span><b>+225</b> Côte d'Ivoire</span> 🇨🇮</div>
+                        <div class="country-option" onclick="setCountry('+221', '🇸🇳')"><span><b>+221</b> Sénégal</span> 🇸🇳</div>
+                        <div class="country-option" onclick="setCountry('+237', '🇨🇲')"><span><b>+237</b> Cameroun</span> 🇨🇲</div>
+                        <div class="country-option" onclick="setCountry('+241', '🇬🇦')"><span><b>+241</b> Gabon</span> 🇬🇦</div>
+                        <div class="country-option" onclick="setCountry('+242', '🇨🇬')"><span><b>+242</b> Congo</span> 🇨🇬</div>
+                        <div class="country-option" onclick="setCountry('+229', '🇧🇯')"><span><b>+229</b> Bénin</span> 🇧🇯</div>
+                        <div class="country-option" onclick="setCountry('+212', '🇲🇦')"><span><b>+212</b> Maroc</span> 🇲🇦</div>
+                        <div class="country-option" onclick="setCountry('+1', '🇺🇸')"><span><b>+1</b> USA</span> 🇺🇸</div>
+                    </div>
+                </div>
+                <div style="width: 1px; height: 24px; background: #475569; margin: 0 8px;"></div>
+                <input type="tel" id="phone-input" class="phone-input" placeholder="Numéro" inputmode="numeric">
+            </div>
+            <button class="btn-login" onclick="handleLogin()">CONTINUER</button>
+            <p id="error-msg" style="color: #ef4444; font-size: 12px; text-align: center; margin-top: 12px; display: none;">Numéro invalide !</p>
+        </div>
+        <p style="margin-top: 40px; font-size: 10px; color: #475569;">BY HACKEN (Ken)</p>
+    </div>
+
+    <!-- APP -->
+    <div id="app-container" class="app-container hidden">
+        <div class="header glass">
+            <img id="header-avatar" src="" class="avatar">
+            <div style="flex: 1;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div id="header-name" class="font-bold" style="font-size: 17px;">Nom</div>
+                    <button onclick="editProfileName()" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:20px; height:20px; font-size:12px; display:flex; align-items:center; justify-content:center;">✏️</button>
+                </div>
+                <div style="font-size: 10px; color: #4ade80; display:flex; align-items:center;"><span style="width: 6px; height: 6px; background: #4ade80; border-radius: 50%; margin-right: 5px;"></span> En ligne</div>
+            </div>
+            <button onclick="openChatList()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; position:relative;">
+                💬
+                <span id="msg-badge" class="badge hidden">!</span>
+            </button>
+        </div>
+
+        <div id="view-home" class="view active">
+            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Activité Mondiale</h2>
+            <div id="feed-container">
+                <div style="text-align:center; padding: 20px; color: #64748b;">Chargement des actualités...</div>
+            </div>
+            <div id="empty-feed" class="hidden text-center" style="margin-top: 60px; opacity: 0.5;">
+                <div style="font-size: 50px;">🏆</div>
+                <p>Aucune activité.</p>
+                <button onclick="switchView('arcade')" class="text-primary font-bold mt-6" style="background:none; border:none; cursor:pointer;">ALLER JOUER →</button>
+            </div>
+        </div>
+
+        <div id="view-arcade" class="view">
+            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 10px;">Arcade Zone</h2>
+            <p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">8 Jeux en temps réel.</p>
+            <div class="grid-4">
+                <div class="card text-center animate-fade" onclick="openModeModal('math')" style="cursor: pointer;"><div style="font-size: 30px;">🧠</div><div class="font-bold" style="font-size: 14px;">Math</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('tictactoe')" style="cursor: pointer;"><div style="font-size: 30px;">⭕</div><div class="font-bold" style="font-size: 14px;">Morpion</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('speed')" style="cursor: pointer;"><div style="font-size: 30px;">⚡</div><div class="font-bold" style="font-size: 14px;">Speed</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('rps')" style="cursor: pointer;"><div style="font-size: 30px;">✂️</div><div class="font-bold" style="font-size: 14px;">PFC</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('guess')" style="cursor: pointer;"><div style="font-size: 30px;">❓</div><div class="font-bold" style="font-size: 14px;">Devine</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('quiz')" style="cursor: pointer;"><div style="font-size: 30px;">📝</div><div class="font-bold" style="font-size: 14px;">Quiz</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('memory')" style="cursor: pointer;"><div style="font-size: 30px;">🃏</div><div class="font-bold" style="font-size: 14px;">Mémoire</div></div>
+                <div class="card text-center animate-fade" onclick="openModeModal('penalty')" style="cursor: pointer;"><div style="font-size: 30px;">⚽</div><div class="font-bold" style="font-size: 14px;">Foot</div></div>
+            </div>
+            <h3 class="font-bold" style="margin-top: 35px; margin-bottom: 15px;">🔥 Amis en ligne</h3>
+            <div id="online-list"></div>
+        </div>
+
+        <div id="view-friends" class="view">
+            <h2 class="font-bold" style="font-size: 24px; margin-bottom: 20px;">Réseau</h2>
+            
+            <!-- Add Friend by ID -->
+            <div class="card" style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="add-friend-id" placeholder="ID Ami (ex: user_abc...)" style="flex:1; background:var(--input); border:none; border-radius:12px; padding:10px; color:white; outline:none; font-family:monospace;">
+                <button onclick="addFriendByID()" class="btn-small btn-success">Ajouter</button>
+            </div>
+            <p style="font-size:10px; color:#94a3b8; margin-top:-10px; margin-bottom:15px; padding:0 5px;">Demande à ton ami de te donner son ID affiché dans son profil.</p>
+
+            <div class="input-group">
+                <input type="text" id="search-input" onkeyup="searchUsers()" placeholder="Rechercher par nom..." style="flex:1; background:transparent; border:none; color:white; outline:none; padding:10px;">
+                <button class="search-btn" onclick="searchUsers()">🔍</button>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 class="font-bold" style="color: #94a3b8; font-size: 14px; text-transform: uppercase;">Mes Amis</h3>
+                <button onclick="editProfileName()" class="btn-small btn-edit">✏️ Modifier mon nom</button>
+            </div>
+            <div id="friends-list"></div>
+        </div>
+
+        <!-- CHAT LIST VIEW -->
+        <div id="view-chatlist" class="view" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--dark); z-index: 50; padding-top: 70px;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; padding: 20px; background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 15px;">
+                <button onclick="switchView('home')" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px;">←</button>
+                <h2 class="font-bold">Conversations</h2>
+            </div>
+            <div id="full-chat-list" style="padding: 15px;"></div>
+        </div>
+
+        <div id="view-profile" class="view">
+            <div class="card text-center" style="padding: 30px 20px;">
+                <div style="position: relative; display: inline-block;">
+                    <img id="profile-avatar" src="" class="avatar" style="width: 100px; height: 100px; border-width: 3px; margin-bottom: 15px;">
+                    <label for="avatar-upload" style="position: absolute; bottom: 5px; right: 5px; background: var(--primary); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid var(--card);">📷</label>
+                    <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="updateAvatar(this)">
+                </div>
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:5px;">
+                    <h2 id="profile-name" class="font-bold" style="font-size: 24px; margin: 0;">Nom</h2>
+                    <button onclick="editProfileName()" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:24px; height:24px; font-size:12px;">✏️</button>
+                </div>
+                
+                <!-- REAL ONLINE ID -->
+                <div style="background:rgba(34, 197, 94, 0.2); color: #4ade80; padding: 10px 15px; border-radius: 12px; font-size: 12px; font-weight: 700; margin: 15px 0; border: 1px dashed #4ade80;">
+                    <div style="font-size:10px; opacity:0.8; margin-bottom:2px;">TON ID EN LIGNE (Partage-le)</div>
+                    <div id="profile-peer-id" style="font-family:monospace; letter-spacing:1px; font-size:14px; word-break:break-all;">Chargement...</div>
+                    <button onclick="copyPeerId()" style="margin-top:5px; background:rgba(34, 197, 94, 0.3); border:none; color:white; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">COPIER</button>
+                </div>
+
+                <div class="grid-2" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
+                    <div><div class="font-bold" style="font-size: 28px; color: var(--primary);" id="stat-wins">0</div><div style="font-size: 11px; color: #94a3b8;">Victoires</div></div>
+                    <div><div class="font-bold" style="font-size: 28px; color: var(--secondary);" id="stat-games">0</div><div style="font-size: 11px; color: #94a3b8;">Parties</div></div>
+                </div>
+                <button onclick="logout()" class="btn-danger btn-small" style="width: 100%; margin-top: 30px; padding: 15px;">DÉCONNEXION</button>
+            </div>
+        </div>
+
+        <div class="nav-bar glass">
+            <div class="nav-item active" onclick="switchView('home', this)"><span class="nav-icon">🏠</span>Accueil</div>
+            <div class="nav-item" onclick="switchView('arcade', this)"><span class="nav-icon">🎮</span>Jeux</div>
+            <div class="nav-item" onclick="switchView('friends', this)"><span class="nav-icon">👥</span>Amis</div>
+            <div class="nav-item" onclick="switchView('profile', this)"><span class="nav-icon">👤</span>Profil</div>
+        </div>
+    </div>
+
+    <!-- GAME MODAL -->
+    <div id="game-modal" class="modal hidden">
+        <div class="modal-header glass">
+            <button onclick="closeGame()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px;">✕</button>
+            <b id="game-title" style="font-size: 18px;">JEU</b>
+            <div style="width: 35px;"></div>
+        </div>
+        <div class="modal-body">
+            <div id="game-waiting" class="waiting-screen hidden">
+                <div class="radar"></div>
+                <h3 class="font-bold" style="font-size: 20px; margin-bottom: 10px;">Attente de l'adversaire...</h3>
+                <p style="color:#94a3b8;">Envoi du défi en cours...</p>
+                <button onclick="closeGame()" class="btn-small btn-danger" style="margin-top: 20px;">Annuler</button>
+            </div>
+            <div id="game-math" class="hidden text-center" style="width: 100%;"><h2 id="math-problem" style="font-size: 48px; margin-bottom: 30px; font-weight: 800;">10 + 5 = ?</h2><div class="math-grid" id="math-keys"></div></div>
+            <div id="game-ttt" class="hidden text-center"><div id="ttt-board" class="grid-2" style="grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 250px; margin: 0 auto;"></div><p id="ttt-status" style="margin-top: 20px; color: #94a3b8; font-weight: 600;">À TOI</p><button onclick="resetTTT()" class="btn-small" style="background: rgba(255,255,255,0.1); color: white; margin-top: 15px;">REJOUER</button></div>
+            <div id="game-speed" class="hidden text-center"><div style="font-size: 14px; color: #94a3b8; margin-bottom: 10px;">Temps restant</div><div id="speed-timer" style="font-size: 60px; font-weight: 800; color: #ef4444; margin-bottom: 30px;">5.00</div><button id="click-btn" class="click-btn" ontouchstart="handleSpeedClick(event)" onmousedown="handleSpeedClick(event)"><span>TAP!</span><span id="score-display" style="font-size: 40px; margin-top: 10px;">0</span></button><button id="start-speed-btn" onclick="startSpeedGame()" class="btn-small btn-primary" style="margin-top: 30px; padding: 15px 40px;">COMMENCER</button></div>
+            <div id="game-rps" class="hidden text-center"><h3 class="font-bold" style="margin-bottom: 20px;">Pierre Feuille Ciseaux</h3><div style="display:flex; gap:15px; justify-content:center;"><button class="rps-btn" onclick="playRPS('rock')">🪨</button><button class="rps-btn" onclick="playRPS('paper')">📄</button><button class="rps-btn" onclick="playRPS('scissors')">✂️</button></div><p id="rps-result" style="margin-top: 20px; font-weight: bold; min-height: 24px;"></p></div>
+            <div id="game-guess" class="hidden text-center"><h3 class="font-bold" style="margin-bottom: 10px;">Devine le nombre (1-100)</h3><input type="number" id="guess-input" style="padding:10px; border-radius:8px; border:none; width:100px; text-align:center; font-size:18px;" placeholder="?"><button onclick="checkGuess()" class="btn-small btn-primary" style="margin-top:10px;">Valider</button><p id="guess-hint" style="margin-top:15px; color:#94a3b8;"></p></div>
+            <div id="game-quiz" class="hidden text-center" style="width:100%; max-width:300px;"><h3 id="quiz-question" class="font-bold" style="margin-bottom: 20px;">Question?</h3><div id="quiz-options" class="flex-col gap-2"></div></div>
+            <div id="game-memory" class="hidden text-center"><div class="memory-grid" id="memory-board"></div><p id="memory-status" style="margin-top:15px; color:#94a3b8;">Trouve les paires</p></div>
+            <div id="game-penalty" class="hidden text-center"><div style="width:200px; height:200px; background:#22c55e; border-radius:100px 100px 0 0; position:relative; margin:0 auto; border:5px solid white;"><div id="goalkeeper" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); font-size:40px;">🧤</div></div><div style="display:flex; gap:10px; justify-content:center; margin-top:20px;"><button onclick="shoot('left')" class="btn-small btn-primary">Gauche</button><button onclick="shoot('center')" class="btn-small btn-primary">Centre</button><button onclick="shoot('right')" class="btn-small btn-primary">Droite</button></div><p id="penalty-result" style="margin-top:15px; font-weight:bold;"></p></div>
+        </div>
+        <div class="modal-footer glass">
+            <img id="opp-avatar" src="" class="avatar" style="width: 45px; height: 45px;">
+            <div style="flex: 1;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Adversaire</div>
+                <div id="opp-name" class="font-bold" style="font-size: 15px;">Bot IA</div>
+            </div>
+            <button id="add-friend-btn" onclick="addFriendFromGame()" class="hidden btn-small btn-primary">+ AMI</button>
+        </div>
+    </div>
+
+    <!-- CHAT INTERFACE -->
+    <div id="chat-interface" class="chat-interface hidden">
+        <div class="chat-bg" id="chat-bg-container"></div>
+        <div class="chat-header">
+            <button onclick="closeChat()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 10px;">←</button>
+            <img id="chat-header-img" src="" class="avatar" style="width: 35px; height: 35px;">
+            <div style="flex:1;">
+                <b id="chat-header-name" style="font-size: 16px; display: block;">Nom</b>
+                <span id="chat-status" style="font-size: 10px; color: #4ade80;">● En ligne</span>
+            </div>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" class="chat-input" style="flex: 1; background: var(--input); border: none; border-radius: 24px; padding: 12px 20px; color: white; outline: none;" placeholder="Message..." onkeypress="handleChatKey(event)">
+            <button onclick="sendMessage()" class="send-btn" style="width: 45px; height: 45px; border-radius: 50%; background: var(--primary); border: none; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION FIREBASE (PERSONNALISÉE)
+        // ==========================================
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtHXCyNu4psPE-O0KwcGtbbc05wTGzv3A",
+            authDomain: "hacken-a39e0.firebaseapp.com",
+            databaseURL: "https://hacken-a39e0-default-rtdb.firebaseio.com",
+            projectId: "hacken-a39e0",
+            storageBucket: "hacken-a39e0.firebasestorage.app",
+            messagingSenderId: "443590830785",
+            appId: "1:443590830785:web:fe1d1d9be93ccf98220240"
+        };
+
+        // Initialisation de Firebase
+        if (!firebase.apps.length) {
+            try {
+                const app = firebase.initializeApp(firebaseConfig);
+                const db = firebase.database();
+                console.log("✅ Firebase Connecté avec succès !");
+                console.log("Projet:", firebaseConfig.projectId);
+            } catch (e) {
+                console.error("❌ Erreur Firebase:", e);
+                alert("Erreur de connexion Firebase :\n" + e.message + "\n\nVérifie tes clés API et les règles de sécurité !");
+            }
+        } else {
+            firebase.app();
+        }
+
+        // --- DATA & PEER JS ---
+        let currentUser = null;
+        let localDB = { friends: [], chats: {} }; // Local storage for friends/chats
+        let selectedCode = "+243", selectedFlag = "🇨🇩";
+        let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
+        let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, guessNum: 0, memoryCards: [], flipped: [], matched: [] };
+        
+        // PeerJS Variables
+        let peer = null;
+        let myPeerId = null;
+        let connections = {}; 
+        let pendingChallenge = null;
+        let unreadCounts = {};
+
+        // --- INIT ---
+        window.onload = function() {
+            const savedLocal = localStorage.getItem('hacken_local');
+            if (savedLocal) localDB = JSON.parse(savedLocal);
+            
+            const session = sessionStorage.getItem('hacken_user');
+            if (session) { 
+                currentUser = JSON.parse(session); 
+                initPeer(); 
+                showApp(); 
+                listenToGlobalPosts();
+            }
+            document.getElementById('selected-code').innerText = selectedCode;
+            document.getElementById('selected-flag').innerText = selectedFlag;
+        };
+        function saveLocal() { localStorage.setItem('hacken_local', JSON.stringify(localDB)); }
+
+        // --- FIREBASE REALTIME LISTENERS ---
+        function listenToGlobalPosts() {
+            const feedContainer = document.getElementById('feed-container');
+            const emptyFeed = document.getElementById('empty-feed');
+            
+            // Listen to 'posts' node in Firebase
+            firebase.database().ref('posts').limitToLast(20).on('value', (snapshot) => {
+                feedContainer.innerHTML = '';
+                let hasPosts = false;
+                
+                snapshot.forEach((childSnapshot) => {
+                    hasPosts = true;
+                    const p = childSnapshot.val();
+                    const postId = childSnapshot.key;
+                    const isLiked = p.likedBy && p.likedBy.includes(currentUser.id);
+                    
+                    const html = `<div class="card animate-fade">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                            <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
+                            <b style="font-size:15px;">${p.user}</b>
+                            <span style="font-size:10px; color:#94a3b8; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:8px;">${p.game}</span>
+                        </div>
+                        <div style="background:rgba(15, 23, 42, 0.5); padding:15px; border-radius:12px; text-align:center; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">${p.user} ${p.action} ${p.opponent}</div>
+                            <div style="font-size:20px; font-weight:800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${p.score}</div>
+                        </div>
+                        <div style="display:flex; gap:20px; font-size:13px; color:#94a3b8;">
+                            <span onclick="toggleLike('${postId}')" style="cursor:pointer;" class="${isLiked ? 'text-secondary' : ''}">
+                                ❤️ <span style="font-weight:600;">${p.likes || 0}</span>
+                            </span>
+                            <span onclick="openComments('${postId}')" style="cursor:pointer;">
+                                💬 <span style="font-weight:600;">${p.comments ? Object.keys(p.comments).length : 0}</span>
+                            </span>
+                        </div>
+                    </div>`;
+                    feedContainer.innerHTML += html;
+                });
+                
+                if(!hasPosts) {
+                    emptyFeed.classList.remove('hidden');
+                } else {
+                    emptyFeed.classList.add('hidden');
+                }
+            });
+        }
+
+        function toggleLike(postId) {
+            const postRef = firebase.database().ref('posts/' + postId);
+            postRef.transaction((post) => {
+                if (post) {
+                    if (!post.likedBy) post.likedBy = [];
+                    const idx = post.likedBy.indexOf(currentUser.id);
+                    if (idx === -1) {
+                        post.likedBy.push(currentUser.id);
+                        post.likes = (post.likes || 0) + 1;
+                    } else {
+                        post.likedBy.splice(idx, 1);
+                        post.likes = (post.likes || 0) - 1;
+                    }
+                }
+                return post;
+            });
+        }
+
+        function openComments(postId) {
+            activePostId = postId;
+            const list = document.getElementById('comments-list');
+            list.innerHTML = '<div style="text-align:center; padding:20px;">Chargement...</div>';
+            document.getElementById('comments-modal').classList.remove('hidden');
+            document.getElementById('comment-input').value = '';
+            
+            // Listen to comments for this post
+            firebase.database().ref('posts/' + postId + '/comments').on('value', (snapshot) => {
+                list.innerHTML = '';
+                if (!snapshot.exists()) {
+                    list.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Aucun commentaire.</p>';
+                    return;
+                }
+                snapshot.forEach((child) => {
+                    const c = child.val();
+                    list.innerHTML += `<div class="comment-item"><div class="comment-user">${c.user}</div><div class="comment-text">${c.text}</div></div>`;
+                });
+                list.scrollTop = list.scrollHeight;
+            });
+        }
+        function closeComments() { 
+            document.getElementById('comments-modal').classList.add('hidden'); 
+            if(activePostId) firebase.database().ref('posts/' + activePostId + '/comments').off();
+            activePostId = null; 
+        }
+        function postComment() {
+            const txt = document.getElementById('comment-input').value.trim();
+            if(!txt || !activePostId) return;
+            
+            const newCommentRef = firebase.database().ref('posts/' + activePostId + '/comments').push();
+            newCommentRef.set({
+                user: currentUser.name,
+                text: txt,
+                time: Date.now()
+            });
+            document.getElementById('comment-input').value = '';
+        }
+
+        // --- PEER JS CONNECTION ---
+        function initPeer() {
+            const statusEl = document.getElementById('conn-status');
+            const statusText = document.getElementById('conn-text');
+            const peerId = currentUser.peerId || 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            peer = new Peer(peerId, { debug: 2 });
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                currentUser.peerId = id;
+                updateUser();
+                document.getElementById('profile-peer-id').innerText = id;
+                statusEl.className = 'connection-status status-online';
+                statusText.innerText = 'En Ligne';
+                
+                // Update presence in Firebase
+                firebase.database().ref('users/' + myPeerId).set({
+                    name: currentUser.name,
+                    avatar: currentUser.avatar,
+                    online: true
+                });
+                
+                // Listen for challenges
+                firebase.database().ref('challenges').orderByChild('targetId').equalTo(myPeerId).on('child_added', (snapshot) => {
+                    const data = snapshot.val();
+                    if(!data.accepted && !data.declined) {
+                        pendingChallenge = { ...data, key: snapshot.key };
+                        document.getElementById('notification-text').innerText = `${data.fromName} veut te défier aux ${data.game} !`;
+                        document.getElementById('notification-toast').classList.add('show');
+                    }
+                });
+            });
+
+            peer.on('connection', (conn) => { setupConnection(conn); });
+            peer.on('error', (err) => { statusEl.className = 'connection-status status-offline'; statusText.innerText = 'Erreur'; });
+        }
+
+        function setupConnection(conn) {
+            connections[conn.peer] = conn;
+            conn.on('data', (data) => handleData(data, conn.peer));
+            conn.on('close', () => { delete connections[conn.peer]; updateFriendStatus(conn.peer, false); });
+        }
+
+        function sendToPeer(peerId, data) {
+            if (connections[peerId]) { connections[peerId].send(data); return true; }
+            else {
+                const conn = peer.connect(peerId);
+                setupConnection(conn);
+                setTimeout(() => { if(connections[peerId]) connections[peerId].send(data); }, 1000);
+                return false;
+            }
+        }
+
+        function handleData(data, senderId) {
+            if (data.type === 'chat') {
+                if (activeChatId === senderId) {
+                    const key = getChatKey(senderId);
+                    if (!localDB.chats[key]) localDB.chats[key] = [];
+                    localDB.chats[key].push({ sender: senderId, text: data.text, time: Date.now() });
+                    saveLocal();
+                    renderChatMessages();
+                } else {
+                    // Increment badge
+                    unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+                    updateBadges();
+                }
+            } else if (data.type === 'game_move') {
+                if (currentOpponent && currentOpponent.peerId === senderId) processOnlineMove(data);
+            }
+        }
+
+        function updateFriendStatus(peerId, online) { renderFriends(); renderOnline(); }
+
+        // --- NOTIFICATIONS ---
+        function closeNotification() { document.getElementById('notification-toast').classList.remove('show'); pendingChallenge = null; }
+        function acceptChallenge() {
+            if(pendingChallenge) {
+                // Mark as accepted in Firebase
+                firebase.database().ref('challenges/' + pendingChallenge.key).update({ accepted: true });
+                startGame(pendingChallenge.game, { name: pendingChallenge.fromName, avatar: pendingChallenge.fromAvatar, peerId: pendingChallenge.fromPeerId });
+                document.getElementById('notification-toast').classList.remove('show');
+                pendingChallenge = null;
+            }
+        }
+        function sendChallenge(targetPeerId, targetName, targetAvatar, game) {
+            firebase.database().ref('challenges').push({
+                fromName: currentUser.name,
+                fromAvatar: currentUser.avatar,
+                fromPeerId: myPeerId,
+                targetId: targetPeerId,
+                game: game,
+                accepted: false,
+                declined: false,
+                timestamp: Date.now()
+            }).then(() => {
+                alert(`Défi envoyé à ${targetName} !`);
+                closeModeModal();
+            });
+        }
+
+        // --- AUTH ---
+        function toggleCountry() { document.getElementById('country-list').style.display = document.getElementById('country-list').style.display === 'block' ? 'none' : 'block'; }
+        function setCountry(code, flag) { selectedCode = code; selectedFlag = flag; document.getElementById('selected-code').innerText = code; document.getElementById('selected-flag').innerText = flag; document.getElementById('country-list').style.display = 'none'; document.getElementById('phone-input').focus(); }
+        document.addEventListener('click', (e) => { if (!document.getElementById('country-btn').contains(e.target) && !document.getElementById('country-list').contains(e.target)) document.getElementById('country-list').style.display = 'none'; });
+        
+        function handleLogin() {
+            const phone = document.getElementById('phone-input').value.replace(/\s/g, '');
+            if (phone.length < 5) { document.getElementById('error-msg').style.display = 'block'; return; }
+            document.getElementById('error-msg').style.display = 'none';
+            const fullPhone = selectedCode + phone;
+            
+            // Check if user exists in Firebase or create new
+            // For simplicity in this demo, we create locally and sync peerID
+            let user = { id: Date.now().toString(), name: "Joueur " + phone.slice(-3), phone: fullPhone, avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff", wins: 0, games: 0, peerId: null };
+            
+            currentUser = user; 
+            sessionStorage.setItem('hacken_user', JSON.stringify(user)); 
+            initPeer(); 
+            showApp();
+        }
+        
+        function showApp() { 
+            document.getElementById('login-screen').classList.add('hidden'); 
+            document.getElementById('app-container').classList.remove('hidden'); 
+            updateUI(); 
+            renderFriends(); 
+            renderOnline(); 
+        }
+        
+        function updateUI() { 
+            if(!currentUser) return; 
+            document.getElementById('header-name').innerText = currentUser.name; 
+            document.getElementById('profile-name').innerText = currentUser.name; 
+            if(myPeerId) document.getElementById('profile-peer-id').innerText = myPeerId; 
+            document.getElementById('header-avatar').src = currentUser.avatar; 
+            document.getElementById('profile-avatar').src = currentUser.avatar; 
+            document.getElementById('stat-wins').innerText = currentUser.wins; 
+            document.getElementById('stat-games').innerText = currentUser.games; 
+        }
+        
+        function logout() { 
+            if(peer) peer.destroy(); 
+            if(myPeerId) firebase.database().ref('users/' + myPeerId).remove();
+            sessionStorage.removeItem('hacken_user'); 
+            location.reload(); 
+        }
+
+        // --- NAV & FRIENDS ---
+        function switchView(viewId, el) { 
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); 
+            const target = document.getElementById(viewId.startsWith('view-') ? viewId : 'view-' + viewId);
+            if(target) target.classList.add('active'); 
+            if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); } 
+            if(viewId === 'view-chatlist') { unreadCounts = {}; updateBadges(); }
+        }
+        
+        function renderFriends() { 
+            const list = document.getElementById('friends-list'); 
+            if (!localDB.friends || localDB.friends.length === 0) { list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding: 20px;">Aucun ami ajouté.</p>'; return; } 
+            list.innerHTML = localDB.friends.map(f => { 
+                const isOnline = !!connections[f.peerId];
+                return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="position:relative;">
+                            <img src="${f.avatar}" class="avatar">
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+                        </div>
+                        <div>
+                            <b style="font-size:15px; display:block;">${f.name}</b>
+                            <span style="font-size:10px; color:${isOnline ? '#22c55e' : '#ef4444'}">${isOnline ? 'En ligne' : 'Hors ligne'}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="openChat('${f.peerId}')" class="btn-small btn-primary">💬</button>
+                        ${isOnline ? `<button onclick="openModeModal('math', '${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-success">⚔️</button>` : '<span style="font-size:10px; color:#64748b;">Offline</span>'}
+                    </div>
+                </div>`; 
+            }).join(''); 
+        }
+        
+        function searchUsers() { 
+            const q = document.getElementById('search-input').value.toLowerCase(); 
+            const list = document.getElementById('friends-list'); 
+            if (q.length < 2) { renderFriends(); return; } 
+            const matches = localDB.friends.filter(u => u.name.toLowerCase().includes(q)); 
+            list.innerHTML = matches.map(u => { 
+                const isOnline = !!connections[u.peerId];
+                return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="position:relative;">
+                            <img src="${u.avatar}" class="avatar">
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#22c55e' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
+                        </div>
+                        <b style="font-size:15px;">${u.name}</b>
+                    </div>
+                    <span style="color:#94a3b8; font-size:12px;">✓ Ami</span>
+                </div>`; 
+            }).join(''); 
+        }
+        
+        function addFriendByID() {
+            const pid = document.getElementById('add-friend-id').value.trim();
+            if(!pid) return;
+            if(pid === myPeerId) { alert("Tu ne peux pas t'ajouter toi-même !"); return; }
+            if(localDB.friends.find(f => f.peerId === pid)) { alert("Déjà ami !"); return; }
+            
+            const conn = peer.connect(pid);
+            conn.on('open', () => {
+                localDB.friends.push({ peerId: pid, name: "Ami Distance", avatar: "https://ui-avatars.com/api/?name=A&background=random" });
+                saveLocal();
+                renderFriends();
+                alert("Ami ajouté !");
+                conn.close();
+            });
+            conn.on('error', () => alert("ID invalide ou hors ligne."));
+        }
+        
+        function updateUser() { if(!currentUser) return; sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); }
+        function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); updateUI(); } }
+        function updateAvatar(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => { currentUser.avatar = e.target.result; updateUser(); updateUI(); }; reader.readAsDataURL(input.files[0]); } }
+        
+        function renderOnline() { 
+            const onlineFriends = localDB.friends.filter(f => connections[f.peerId]);
+            document.getElementById('online-list').innerHTML = onlineFriends.map(u => `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="position:relative;">
+                            <img src="${u.avatar}" class="avatar">
+                            <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:#22c55e; border-radius:50%; border:2px solid var(--card);"></div>
+                        </div>
+                        <div>
+                            <b style="font-size:15px; display:block;">${u.name}</b>
+                            <span style="font-size:10px; color:#22c55e">En ligne</span>
+                        </div>
+                    </div>
+                    <button onclick="openModeModal('math', '${u.peerId}', '${u.name}', '${u.avatar}')" class="btn-small btn-primary">⚔️ Défier</button>
+                </div>
+            `).join('');
+            if(onlineFriends.length === 0) document.getElementById('online-list').innerHTML = '<p style="color:#64748b; text-align:center;">Aucun ami en ligne.</p>';
+        }
+
+        function copyPeerId() { navigator.clipboard.writeText(myPeerId).then(() => alert("ID copié !")); }
+
+        // --- CHAT LIST ---
+        function openChatList() {
+            const list = document.getElementById('full-chat-list');
+            const chatKeys = Object.keys(localDB.chats);
+            if(chatKeys.length === 0) { list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Aucune conversation.</p>'; }
+            else {
+                list.innerHTML = chatKeys.map(key => {
+                    const ids = key.split('_');
+                    const otherId = ids.find(id => id !== currentUser.id && id !== myPeerId);
+                    if(!otherId) return '';
+                    const friend = localDB.friends.find(f => f.peerId === otherId);
+                    if(!friend) return '';
+                    const msgs = localDB.chats[key];
+                    const lastMsg = msgs[msgs.length-1];
+                    const time = new Date(lastMsg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const count = unreadCounts[otherId] || 0;
+                    
+                    return `<div class="card" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="openChat('${friend.peerId}')">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${friend.avatar}" class="avatar">
+                            <div>
+                                <b style="font-size:15px; display:block;">${friend.name}</b>
+                                <span style="font-size:12px; color:#94a3b8;">${lastMsg.sender === myPeerId ? 'Toi: ' : ''}${lastMsg.text.substring(0, 20)}...</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:10px; color:#64748b;">${time}</span>
+                            ${count > 0 ? `<div class="badge" style="position:relative; top:0; right:0; margin-top:5px;">${count}</div>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            switchView('view-chatlist');
+        }
+
+        // --- MODE SELECTION ---
+        function openModeModal(game, friendPeerId = null, friendName = null, friendAvatar = null) { 
+            selectedGameType = game; 
+            document.getElementById('selected-game-name').innerText = game.toUpperCase(); 
+            document.getElementById('mode-modal').classList.remove('hidden'); 
+            window.tempFriendData = friendPeerId ? { peerId: friendPeerId, name: friendName, avatar: friendAvatar } : null; 
+        }
+        function closeModeModal() { document.getElementById('mode-modal').classList.add('hidden'); window.tempFriendData = null; }
+        function selectMode(mode) { 
+            selectedMode = mode; 
+            closeModeModal(); 
+            if (mode === 'bot') { startGame(selectedGameType, { name: "Bot IA", avatar: "https://ui-avatars.com/api/?name=Bot&background=333" }); } 
+            else if (mode === 'friend') { 
+                if(window.tempFriendData) { sendChallenge(window.tempFriendData.peerId, window.tempFriendData.name, window.tempFriendData.avatar, selectedGameType); } 
+                else { alert("Sélectionne un ami en ligne."); } 
+            } 
+        }
+
+        // --- GAMES (Simplified) ---
+        function startGame(type, opponent) {
+            const modal = document.getElementById('game-modal'); modal.classList.remove('hidden');
+            currentOpponent = opponent;
+            document.getElementById('opp-name').innerText = opponent.name;
+            document.getElementById('opp-avatar').src = opponent.avatar;
+            document.getElementById('add-friend-btn').classList.add('hidden');
+            document.getElementById('game-waiting').classList.add('hidden');
+            document.querySelectorAll('.modal-body > div:not(#game-waiting)').forEach(d => d.classList.add('hidden'));
+
+            if (type === 'math') { document.getElementById('game-title').innerText = "MATH"; document.getElementById('game-math').classList.remove('hidden'); initMath(); }
+            else if (type === 'tictactoe') { document.getElementById('game-title').innerText = "MORPION"; document.getElementById('game-ttt').classList.remove('hidden'); initTTT(); }
+            else if (type === 'speed') { document.getElementById('game-title').innerText = "SPEED"; document.getElementById('game-speed').classList.remove('hidden'); resetSpeedGame(); }
+            else if (type === 'rps') { document.getElementById('game-title').innerText = "PFC"; document.getElementById('game-rps').classList.remove('hidden'); document.getElementById('rps-result').innerText = ""; }
+            else if (type === 'guess') { document.getElementById('game-title').innerText = "DEVINE"; document.getElementById('game-guess').classList.remove('hidden'); gameVars.guessNum = Math.floor(Math.random() * 100) + 1; document.getElementById('guess-hint').innerText = ""; document.getElementById('guess-input').value = ""; }
+            else if (type === 'quiz') { document.getElementById('game-title').innerText = "QUIZ"; document.getElementById('game-quiz').classList.remove('hidden'); initQuiz(); }
+            else if (type === 'memory') { document.getElementById('game-title').innerText = "MÉMOIRE"; document.getElementById('game-memory').classList.remove('hidden'); initMemory(); }
+            else if (type === 'penalty') { document.getElementById('game-title').innerText = "FOOT"; document.getElementById('game-penalty').classList.remove('hidden'); document.getElementById('penalty-result').innerText = ""; }
+        }
+        function closeGame() { document.getElementById('game-modal').classList.add('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); }
+        function addFriendFromGame() { if(currentOpponent && currentOpponent.peerId) { /* Add logic */ } }
+        function finishGame(win, type) { if(!currentUser) return; currentUser.games++; if (win) { currentUser.wins++; alert("🏆 VICTOIRE !"); let scoreText = "Gagné !"; if(type === 'speed') scoreText = gameVars.speedScore + " clics"; createPost(currentUser, currentOpponent, scoreText, type); } else { alert("😢 PERDU !"); } updateUser(); updateUI(); }
+
+        function sendMove(moveData) { if(currentOpponent && currentOpponent.peerId) sendToPeer(currentOpponent.peerId, { type: 'game_move', moveData }); }
+        function processOnlineMove(data) { console.log("Processing move:", data); }
+
+        function createPost(winner, loser, score, game) { 
+            if(!winner || !loser) return; 
+            firebase.database().ref('posts').push({
+                userId: winner.id, user: winner.name, avatar: winner.avatar, 
+                action: "a gagné contre", opponent: loser.name, score: score, game: game, 
+                likes: 0, likedBy: [], comments: {}, timestamp: Date.now()
+            });
+        }
+
+        // Math
+        function initMath() { const n1 = Math.floor(Math.random() * 20) + 1, n2 = Math.floor(Math.random() * 20) + 1; gameVars.mathAns = n1 + n2; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; const keys = ['1','2','3','C','4','5','6','0','7','8','9','=']; const container = document.getElementById('math-keys'); container.innerHTML = ''; let currentVal = ''; keys.forEach(k => { const btn = document.createElement('button'); btn.innerText = k; btn.className = 'math-key ' + (k === '=' ? 'eq' : (k === 'C' ? 'op' : '')); btn.onclick = () => { if (k === '=') { if (parseInt(currentVal) === gameVars.mathAns) finishGame(true, 'math'); else { alert("Faux !"); initMath(); } } else if (k === 'C') { currentVal = ''; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ?`; } else { currentVal += k; document.getElementById('math-problem').innerText = `${n1} + ${n2} = ${currentVal}`; } }; container.appendChild(btn); }); }
+        // TTT
+        function initTTT() { gameVars.tttBoard = ['', '', '', '', '', '', '', '', '']; gameVars.tttActive = true; document.getElementById('ttt-status').innerText = "À TOI (X)"; renderTTT(); }
+        function renderTTT() { const board = document.getElementById('ttt-board'); board.innerHTML = gameVars.tttBoard.map((c, i) => `<div class="ttt-cell" style="background:var(--input); aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; border-radius:8px; cursor:pointer;" onclick="move(${i})">${c}</div>`).join(''); }
+        function move(i) { if (!gameVars.tttActive || gameVars.tttBoard[i]) return; gameVars.tttBoard[i] = 'X'; renderTTT(); sendMove({ type: 'ttt', index: i, value: 'X' }); if (checkWin('X')) { finishGame(true, 'ttt'); gameVars.tttActive = false; return; } setTimeout(() => { const empty = gameVars.tttBoard.map((v, idx) => v === '' ? idx : null).filter(v => v !== null); if (empty.length) { gameVars.tttBoard[empty[Math.floor(Math.random() * empty.length)]] = 'O'; renderTTT(); if (checkWin('O')) { finishGame(false, 'ttt'); gameVars.tttActive = false; } } }, 600); }
+        function checkWin(p) { const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return wins.some(c => c.every(i => gameVars.tttBoard[i] === p)); }
+        function resetTTT() { initTTT(); }
+        // Speed
+        function resetSpeedGame() { gameVars.speedScore = 0; gameVars.speedTime = 5; gameVars.isSpeedActive = false; document.getElementById('score-display').innerText = '0'; document.getElementById('speed-timer').innerText = '5.00'; document.getElementById('click-btn').style.opacity = '0.5'; document.getElementById('click-btn').style.pointerEvents = 'none'; document.getElementById('start-speed-btn').classList.remove('hidden'); if(gameVars.speedInterval) clearInterval(gameVars.speedInterval); }
+        function startSpeedGame() { resetSpeedGame(); gameVars.isSpeedActive = true; document.getElementById('start-speed-btn').classList.add('hidden'); document.getElementById('click-btn').style.opacity = '1'; document.getElementById('click-btn').style.pointerEvents = 'auto'; gameVars.speedInterval = setInterval(() => { gameVars.speedTime -= 0.01; if(gameVars.speedTime <= 0) { clearInterval(gameVars.speedInterval); gameVars.isSpeedActive = false; document.getElementById('click-btn').style.opacity = '0.5'; document.getElementById('click-btn').style.pointerEvents = 'none'; if(gameVars.speedScore > 30) finishGame(true, 'speed'); else finishGame(false, 'speed'); } document.getElementById('speed-timer').innerText = gameVars.speedTime.toFixed(2); }, 10); }
+        function handleSpeedClick(e) { if(e) e.preventDefault(); if(!gameVars.isSpeedActive) return; gameVars.speedScore++; document.getElementById('score-display').innerText = gameVars.speedScore; }
+        // RPS
+        function playRPS(choice) { const opts = ['rock', 'paper', 'scissors']; const bot = opts[Math.floor(Math.random() * 3)]; let res = ""; if(choice === bot) res = "Égalité !"; else if((choice==='rock'&&bot==='scissors')||(choice==='paper'&&bot==='rock')||(choice==='scissors'&&bot==='paper')) { res = "Gagné !"; finishGame(true, 'rps'); } else { res = "Perdu !"; finishGame(false, 'rps'); } document.getElementById('rps-result').innerText = `Toi: ${choice} vs Bot: ${bot} -> ${res}`; }
+        // Guess
+        function checkGuess() { const val = parseInt(document.getElementById('guess-input').value); if(val === gameVars.guessNum) { alert("Bravo !"); finishGame(true, 'guess'); } else if(val < gameVars.guessNum) document.getElementById('guess-hint').innerText = "Plus grand !"; else document.getElementById('guess-hint').innerText = "Plus petit !"; }
+        // Quiz
+        function initQuiz() { const qs = [{q:"Capitale RDC?", o:["Kinshasa","Lubumbashi","Goma"], a:0}, {q:"2+2=?", o:["3","4","5"], a:1}]; const q = qs[Math.floor(Math.random()*qs.length)]; document.getElementById('quiz-question').innerText = q.q; const container = document.getElementById('quiz-options'); container.innerHTML = ""; q.o.forEach((opt, i) => { const btn = document.createElement('button'); btn.innerText = opt; btn.className = "btn-small btn-primary"; btn.style.width = "100%"; btn.style.marginTop = "5px"; btn.onclick = () => { if(i === q.a) { alert("Correct!"); finishGame(true, 'quiz'); } else { alert("Faux!"); finishGame(false, 'quiz'); } }; container.appendChild(btn); }); }
+        // Memory
+        function initMemory() { const icons = ['🍎','🍎','🍌','🍌','🍇','🍇','🍒','🍒']; gameVars.memoryCards = icons.sort(() => 0.5 - Math.random()); gameVars.flipped = []; gameVars.matched = []; renderMemory(); }
+        function renderMemory() { const board = document.getElementById('memory-board'); board.innerHTML = ""; gameVars.memoryCards.forEach((icon, i) => { const card = document.createElement('div'); card.className = `memory-card ${gameVars.flipped.includes(i) || gameVars.matched.includes(i) ? 'flipped' : ''}`; card.innerText = gameVars.flipped.includes(i) || gameVars.matched.includes(i) ? icon : '?'; card.onclick = () => flipMemory(i); board.appendChild(card); }); }
+        function flipMemory(i) { if(gameVars.flipped.length >= 2 || gameVars.flipped.includes(i) || gameVars.matched.includes(i)) return; gameVars.flipped.push(i); renderMemory(); if(gameVars.flipped.length === 2) { setTimeout(() => { if(gameVars.memoryCards[gameVars.flipped[0]] === gameVars.memoryCards[gameVars.flipped[1]]) { gameVars.matched.push(...gameVars.flipped); if(gameVars.matched.length === 8) finishGame(true, 'memory'); } gameVars.flipped = []; renderMemory(); }, 1000); } }
+        // Penalty
+        function shoot(dir) { const dirs = ['left', 'center', 'right']; const bot = dirs[Math.floor(Math.random()*3)]; if(dir === bot) { document.getElementById('penalty-result').innerText = "Arrêté !"; finishGame(false, 'penalty'); } else { document.getElementById('penalty-result').innerText = "BUT !"; finishGame(true, 'penalty'); } }
+
+        // --- CHAT ---
+        function openChat(peerId) { 
+            activeChatId = peerId; 
+            const friend = localDB.friends.find(u => u.peerId === peerId); 
+            if(!friend) return; 
+            document.getElementById('chat-header-name').innerText = friend.name; 
+            document.getElementById('chat-header-img').src = friend.avatar; 
+            const statusEl = document.getElementById('chat-status');
+            if(connections[peerId]) { statusEl.innerText = "● En ligne"; statusEl.style.color = "#4ade80"; }
+            else { statusEl.innerText = "● Hors ligne"; statusEl.style.color = "#ef4444"; }
+            
+            const bgContainer = document.getElementById('chat-bg-container');
+            bgContainer.innerHTML = '';
+            for(let i=0; i<15; i++) {
+                const p = document.createElement('div');
+                p.className = 'chat-particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.top = Math.random() * 100 + '%';
+                p.style.animationDelay = Math.random() * 5 + 's';
+                p.style.width = (Math.random() * 10 + 5) + 'px';
+                p.style.height = p.style.width;
+                bgContainer.appendChild(p);
+            }
+            document.getElementById('chat-interface').classList.remove('hidden'); 
+            renderChatMessages(); 
+        }
+        function closeChat() { document.getElementById('chat-interface').classList.add('hidden'); activeChatId = null; }
+        function getChatKey(pid) { if(!currentUser || !pid) return ''; const ids = [currentUser.id, myPeerId, pid].filter(Boolean).sort(); return ids.join('_'); }
+        function renderChatMessages() { 
+            const key = getChatKey(activeChatId); 
+            const messages = localDB.chats[key] || []; 
+            const container = document.getElementById('chat-messages'); 
+            container.innerHTML = messages.map((m, index) => `<div class="message-bubble ${m.sender===myPeerId?'msg-me':'msg-other'} msg-anim" style="animation-delay:${index*0.05}s">${m.text}</div>`).join(''); 
+            container.scrollTop = container.scrollHeight; 
+        }
+        function sendMessage() { 
+            const input = document.getElementById('chat-input'); 
+            const text = input.value.trim(); 
+            if (!text || !activeChatId) return; 
+            const key = getChatKey(activeChatId); 
+            if (!localDB.chats[key]) localDB.chats[key] = []; 
+            localDB.chats[key].push({ sender: myPeerId, text: text, time: Date.now() }); 
+            saveLocal(); 
+            input.value = ''; 
+            renderChatMessages(); 
+            sendToPeer(activeChatId, { type: 'chat', text: text });
+        }
+        function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
+    </script>
+</body>
+</html>
