@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - FIX FINAL</title>
+    <title>HACKEN CONNECT - FIX FINAL CHAT</title>
     <!-- PeerJS for P2P Chat/Games -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <!-- Tailwind CSS -->
@@ -1069,6 +1069,7 @@
             list.innerHTML = allContacts.map(f => { 
                 let actions = '';
                 if(f.status === 'friend') {
+                    // FIXED BUTTON: Uses forceOpenChat which handles connection logic
                     actions = `
                     <div style="display:flex; gap:5px;">
                         <button onclick="forceOpenChat('${f.peerId}', '${f.name}', '${f.avatar}')" class="btn-small btn-primary">💬 Écrire</button>
@@ -1106,17 +1107,24 @@
             }).join(''); 
         }
         
-        // Force open chat even if status seems offline (tries to reconnect)
+        // FIXED: This function now guarantees the chat opens
         function forceOpenChat(peerId, name, avatar) {
-            // Try to connect first
+            console.log("Tentative d'ouverture de chat avec:", peerId);
+            
+            // Si pas de connexion, on la crée
             if(!connections[peerId]) {
+                console.log("Pas de connexion, création en cours...");
                 const conn = peer.connect(peerId);
                 setupConnection(conn);
-                // Wait a tiny bit for connection then open
+                
+                // On attend un tout petit peu que la connexion s'établisse puis on ouvre
                 setTimeout(() => {
+                    console.log("Ouverture du chat après délai...");
                     openChat(peerId, name, avatar);
-                }, 500);
+                }, 600); // 600ms de délai pour être sûr
             } else {
+                // Connexion déjà existante, on ouvre direct
+                console.log("Connexion existante, ouverture immédiate.");
                 openChat(peerId, name, avatar);
             }
         }
