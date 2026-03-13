@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HACKEN CONNECT - ULTIMATE</title>
+    <title>HACKEN CONNECT - REVOLUTION</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDKs -->
@@ -20,6 +20,10 @@
             --card: #1e293b; 
             --input: #334155; 
             --success: #10b981;
+            --gold: #fbbf24;
+            --diamond: #38bdf8;
+            --legendary: #f43f5e;
+            --divine: #a855f7;
         }
         body { font-family: 'Poppins', sans-serif; background-color: var(--dark); color: white; margin: 0; overflow-x: hidden; }
         
@@ -32,6 +36,8 @@
         @keyframes bgMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         @keyframes floatParticle { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 20% { opacity: 0.6; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
         @keyframes timerBar { 0% { width: 100%; background: #10b981; } 50% { background: #f59e0b; } 100% { width: 0%; background: #ef4444; } }
+        @keyframes spinBadge { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes glowBadge { 0% { filter: drop-shadow(0 0 2px currentColor); } 50% { filter: drop-shadow(0 0 8px currentColor); } 100% { filter: drop-shadow(0 0 2px currentColor); } }
         
         .animate-fade { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -42,8 +48,26 @@
         .hidden { display: none !important; }
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
         .glass-strong { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); }
-        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; transition: transform 0.2s; }
-        .avatar:hover { transform: scale(1.1); border-color: var(--secondary); }
+        .avatar-container { position: relative; width: 45px; height: 45px; display: inline-block; cursor: pointer; }
+        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); transition: transform 0.2s; z-index: 2; position: relative; }
+        .avatar:hover { transform: scale(1.1); }
+        
+        /* Badge System */
+        .badge-ring {
+            position: absolute;
+            top: -5px; left: -5px; right: -5px; bottom: -5px;
+            border-radius: 50%;
+            border: 2px dashed transparent;
+            animation: spinBadge 10s linear infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .badge-novice { border-color: #94a3b8; }
+        .badge-expert { border-color: var(--primary); animation-duration: 8s; }
+        .badge-master { border-color: var(--gold); animation-duration: 6s; box-shadow: 0 0 10px var(--gold); }
+        .badge-legendary { border-color: var(--legendary); animation-duration: 4s; box-shadow: 0 0 15px var(--legendary); border-style: solid; }
+        .badge-divine { border-color: var(--divine); animation-duration: 3s; box-shadow: 0 0 20px var(--divine); border-style: double; }
+        
         .card { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(8px); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; transition: all 0.3s ease; cursor: pointer; position: relative; overflow: hidden; }
         .card:hover { transform: translateY(-3px); background: rgba(30, 41, 59, 0.7); border-color: rgba(99, 102, 241, 0.3); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
         .btn-small { padding: 8px 16px; border-radius: 12px; border: none; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -234,6 +258,15 @@
         .post-input { width: 100%; background: transparent; border: none; color: white; outline: none; font-size: 14px; resize: none; font-family: 'Poppins', sans-serif; }
         .post-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
         .preview-image { max-width: 100px; max-height: 100px; border-radius: 8px; object-fit: cover; display: none; margin: 10px 0; }
+        
+        /* Profile Modal */
+        .profile-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 90; display: flex; align-items: center; justify-content: center; }
+        .profile-modal { background: var(--card); padding: 30px; border-radius: 24px; width: 90%; max-width: 400px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: pop 0.3s ease; position: relative; }
+        .close-profile { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.1); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+        
+        /* Level Progress */
+        .level-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .level-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.5s ease; }
     </style>
 </head>
 <body>
@@ -279,12 +312,51 @@
         </div>
     </div>
 
+    <!-- PROFILE PREVIEW MODAL -->
+    <div id="profile-modal" class="profile-modal-overlay hidden" onclick="if(event.target === this) closeProfileModal()">
+        <div class="profile-modal">
+            <button onclick="closeProfileModal()" class="close-profile">✕</button>
+            <div style="position:relative; display:inline-block; margin-bottom:15px;">
+                <img id="modal-avatar" src="" class="avatar" style="width:100px; height:100px; border-width:3px;">
+                <div id="modal-badge-ring" class="badge-ring"></div>
+            </div>
+            <h2 id="modal-name" class="font-bold" style="font-size:24px; margin:0;">Nom</h2>
+            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:5px;">
+                <span id="modal-level-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,0.1);">Niveau 1</span>
+                <span id="modal-title-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; background:rgba(99, 102, 241, 0.2); color:var(--primary); font-weight:bold;">Novice</span>
+            </div>
+            
+            <div class="level-bar">
+                <div id="modal-level-fill" class="level-fill"></div>
+            </div>
+            <p style="font-size:10px; color:#94a3b8; margin-top:5px; text-align:right;">Prochain niveau: <span id="modal-next-level">10</span> victoires</p>
+
+            <div class="grid-2" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                <div>
+                    <div class="font-bold" style="font-size: 24px; color: var(--primary);" id="modal-wins">0</div>
+                    <div style="font-size: 11px; color: #94a3b8;">Victoires</div>
+                </div>
+                <div>
+                    <div class="font-bold" style="font-size: 24px; color: var(--secondary);" id="modal-games">0</div>
+                    <div style="font-size: 11px; color: #94a3b8;">Parties</div>
+                </div>
+            </div>
+            
+            <div id="modal-challenges" style="margin-top:20px; text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
+                <h4 style="margin:0 0 10px 0; font-size:14px; color:var(--gold);">🏆 Défi Actuel</h4>
+                <p id="modal-challenge-text" style="font-size:12px; margin:0;">Atteindre le niveau 5</p>
+            </div>
+            
+            <button id="modal-add-friend-btn" onclick="addFriendFromModal()" class="btn-small btn-success" style="width:100%; margin-top:20px;">+ Ajouter comme ami</button>
+        </div>
+    </div>
+
     <!-- LOGIN -->
     <div id="login-screen" class="login-screen animate-fade">
         <div class="text-center mb-8" style="position:relative; z-index:10;">
             <div style="font-size: 60px; margin-bottom: 15px; filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));">🎮</div>
             <h1 style="font-size: 32px; font-weight: 800; margin: 0; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">HACKEN CONNECT</h1>
-            <p style="color: #94a3b8; margin: 5px 0 0 0; font-weight: 500; letter-spacing: 1px;">GLOBAL EDITION</p>
+            <p style="color: #94a3b8; margin: 5px 0 0 0; font-weight: 500; letter-spacing: 1px;">REVOLUTION EDITION</p>
         </div>
         <div class="login-box animate-fade">
             <label style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 12px;">Connexion</label>
@@ -339,7 +411,7 @@
             <!-- Note for users -->
             <div style="margin-top: 20px; padding: 10px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.3);">
                 <p style="font-size: 11px; color: #93c5fd; text-align: center;">
-                    💡 <b>Conseil :</b> Une fois connecté, pense à changer ton nom et ajouter ta photo de profil dans l'onglet Profil !
+                    💡 <b>Conseil :</b> Une fois connecté, gagne des parties pour débloquer des badges légendaires !
                 </p>
             </div>
         </div>
@@ -349,7 +421,10 @@
     <!-- APP -->
     <div id="app-container" class="app-container hidden">
         <div class="header glass">
-            <img id="header-avatar" src="" class="avatar">
+            <div class="avatar-container" onclick="openProfileModal(currentUser)">
+                <img id="header-avatar" src="" class="avatar">
+                <div id="header-badge-ring" class="badge-ring"></div>
+            </div>
             <div style="flex: 1;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div id="header-name" class="font-bold" style="font-size: 17px;">Nom</div>
@@ -375,9 +450,12 @@
             <!-- Create Post Area (Facebook Style) -->
             <div class="create-post-area">
                 <div style="display:flex; gap:10px; align-items:flex-start;">
-                    <img id="post-author-avatar" src="" class="avatar" style="width:40px; height:40px;">
+                    <div class="avatar-container" onclick="openProfileModal(currentUser)">
+                        <img id="post-author-avatar" src="" class="avatar" style="width:40px; height:40px;">
+                        <div id="post-author-badge" class="badge-ring" style="top:-4px; left:-4px; right:-4px; bottom:-4px;"></div>
+                    </div>
                     <div style="flex:1;">
-                        <textarea id="post-text" class="post-input" rows="2" placeholder="Quoi de neuf ?"></textarea>
+                        <textarea id="post-text" class="post-input" rows="2" placeholder="Quoi de neuf ? Partage ta victoire ou une photo !"></textarea>
                         <img id="post-preview" class="preview-image">
                         <div style="display:flex; gap:10px; margin-top:10px;">
                             <label class="file-upload-label" style="margin:0; padding:5px 10px; font-size:12px; display:flex; align-items:center; gap:5px; cursor:pointer;">
@@ -470,6 +548,7 @@
             <div class="card text-center" style="padding: 30px 20px;">
                 <div style="position: relative; display: inline-block;">
                     <img id="profile-avatar" src="" class="avatar" style="width: 100px; height: 100px; border-width: 3px; margin-bottom: 15px;">
+                    <div id="profile-badge-ring" class="badge-ring"></div>
                     <label for="avatar-upload" style="position: absolute; bottom: 5px; right: 5px; background: var(--primary); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid var(--card); box-shadow: 0 4px 10px rgba(0,0,0,0.3);">📷</label>
                     <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="updateAvatar(this)">
                 </div>
@@ -478,6 +557,16 @@
                     <button onclick="editProfileName()" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:24px; height:24px; font-size:12px;">✏️</button>
                 </div>
                 
+                <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
+                    <span id="profile-level-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,0.1);">Niveau 1</span>
+                    <span id="profile-title-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; background:rgba(99, 102, 241, 0.2); color:var(--primary); font-weight:bold;">Novice</span>
+                </div>
+                
+                <div class="level-bar">
+                    <div id="profile-level-fill" class="level-fill"></div>
+                </div>
+                <p style="font-size:10px; color:#94a3b8; margin-top:5px; text-align:right;">Prochain niveau: <span id="profile-next-level">10</span> victoires</p>
+
                 <!-- REAL ONLINE ID -->
                 <div style="background:rgba(16, 185, 129, 0.2); color: #10b981; padding: 10px 15px; border-radius: 12px; font-size: 12px; font-weight: 700; margin: 15px 0; border: 1px dashed #10b981;">
                     <div style="font-size:10px; opacity:0.8; margin-bottom:2px;">TON ID EN LIGNE (Partage-le)</div>
@@ -495,6 +584,12 @@
                         <div style="font-size: 11px; color: #94a3b8;">Parties</div>
                     </div>
                 </div>
+                
+                <div id="profile-challenges" style="margin-top:20px; text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
+                    <h4 style="margin:0 0 10px 0; font-size:14px; color:var(--gold);">🏆 Défi Actuel</h4>
+                    <p id="profile-challenge-text" style="font-size:12px; margin:0;">Atteindre le niveau 5</p>
+                </div>
+                
                 <button onclick="logout()" class="btn-danger btn-small" style="width: 100%; margin-top: 30px; padding: 15px;">DÉCONNEXION</button>
             </div>
         </div>
@@ -647,6 +742,7 @@
         let currentOpponent = null, activeChatId = null, currentChallenge = null, selectedGameType = '', selectedMode = '', activePostId = null;
         let gameVars = { speedScore: 0, speedTime: 5, speedInterval: null, isSpeedActive: false, tttBoard: [], tttActive: true, mathAns: 0, mathTimer: null, mathTimeLeft: 10, guessNum: 0, memoryCards: [], flipped: [], matched: [], turnTimer: null, myTurn: false, c4Board: [], c4Active: true, warMyCard: 0, warOppCard: 0, warActive: false };
         let postImageBase64 = null;
+        let profileModalUser = null;
         
         let pendingChallenge = null;
         let unreadCounts = {};
@@ -655,6 +751,39 @@
         let presenceRef = null;
         let connectedRef = null;
         let chatListListeners = [];
+
+        // --- BADGE SYSTEM ---
+        function getBadgeClass(level) {
+            if (level >= 40) return 'badge-divine';
+            if (level >= 30) return 'badge-legendary';
+            if (level >= 20) return 'badge-master';
+            if (level >= 10) return 'badge-expert';
+            return 'badge-novice';
+        }
+        
+        function getBadgeTitle(level) {
+            if (level >= 40) return 'Divin';
+            if (level >= 30) return 'Légendaire';
+            if (level >= 20) return 'Maître';
+            if (level >= 10) return 'Expert';
+            return 'Novice';
+        }
+        
+        function getNextLevelThreshold(level) {
+            if (level < 10) return 10;
+            if (level < 20) return 20;
+            if (level < 30) return 30;
+            if (level < 40) return 40;
+            return level + 10;
+        }
+        
+        function getChallenge(level) {
+            if (level < 5) return "Atteindre le niveau 5";
+            if (level < 10) return "Devenir Expert (Niveau 10)";
+            if (level < 20) return "Devenir Maître (Niveau 20)";
+            if (level < 30) return "Devenir Légendaire (Niveau 30)";
+            return "Atteindre le statut Divin (Niveau 40+)";
+        }
 
         // --- INIT ---
         window.onload = function() {
@@ -699,7 +828,9 @@
                     
                     const html = `<div class="card animate-fade">
                         <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                            <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
+                            <div class="avatar-container" onclick="openProfilePreview('${p.userId}')">
+                                <img src="${p.avatar}" class="avatar" style="width:35px; height:35px;">
+                            </div>
                             <div>
                                 <b style="font-size:15px;">${p.user}</b>
                                 <div style="font-size:10px; color:#94a3b8;">${new Date(p.timestamp).toLocaleTimeString()}</div>
@@ -757,7 +888,9 @@
 
                     const html = `<div class="card animate-fade" style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${u.avatar}" class="avatar">
+                            <div class="avatar-container" onclick="openProfilePreview('${u.id}')">
+                                <img src="${u.avatar}" class="avatar">
+                            </div>
                             <div>
                                 <b style="font-size:15px;">${u.name}</b>
                                 <div style="font-size:10px; color:#94a3b8;">Code: ${u.code || 'N/A'}</div>
@@ -844,13 +977,15 @@
                 likedBy: [],
                 comments: {},
                 timestamp: Date.now()
+            }).then(() => {
+                // Reset form
+                document.getElementById('post-text').value = '';
+                document.getElementById('post-preview').style.display = 'none';
+                document.getElementById('post-image-input').value = '';
+                postImageBase64 = null;
+            }).catch(err => {
+                alert("Erreur lors de la publication: " + err.message);
             });
-
-            // Reset form
-            document.getElementById('post-text').value = '';
-            document.getElementById('post-preview').style.display = 'none';
-            document.getElementById('post-image-input').value = '';
-            postImageBase64 = null;
         }
 
         // --- FRIEND REQUEST SYSTEM ---
@@ -1080,6 +1215,8 @@
         
         function updateUI() { 
             if(!currentUser) return; 
+            const level = Math.floor(currentUser.wins / 5) + 1;
+            
             document.getElementById('header-name').innerText = currentUser.name; 
             document.getElementById('profile-name').innerText = currentUser.name; 
             document.getElementById('profile-peer-id').innerText = currentUser.id; 
@@ -1087,6 +1224,24 @@
             document.getElementById('profile-avatar').src = currentUser.avatar; 
             document.getElementById('stat-wins').innerText = currentUser.wins; 
             document.getElementById('stat-games').innerText = currentUser.games; 
+            
+            // Update Badges
+            const badgeClass = getBadgeClass(level);
+            ['header-badge-ring', 'profile-badge-ring', 'post-author-badge'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.className = `badge-ring ${badgeClass}`;
+                }
+            });
+            
+            document.getElementById('profile-level-badge').innerText = `Niveau ${level}`;
+            document.getElementById('profile-title-badge').innerText = getBadgeTitle(level);
+            
+            const nextLevel = getNextLevelThreshold(level);
+            const progress = ((currentUser.wins % 5) / 5) * 100;
+            document.getElementById('profile-level-fill').style.width = `${progress}%`;
+            document.getElementById('profile-next-level').innerText = nextLevel;
+            document.getElementById('profile-challenge-text').innerText = getChallenge(level);
         }
         
         function logout() { 
@@ -1156,7 +1311,7 @@
 
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="position:relative;">
+                        <div class="avatar-container" onclick="openProfilePreview('${f.id}')">
                             <img src="${f.avatar || 'https://ui-avatars.com/api/?name='+f.name}" class="avatar">
                             <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${dotColor}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
@@ -1185,7 +1340,9 @@
                 container.innerHTML = pendingRequests.map(r => `
                     <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${r.fromAvatar || 'https://ui-avatars.com/api/?name='+r.fromName}" class="avatar">
+                            <div class="avatar-container" onclick="openProfilePreview('${r.fromId}')">
+                                <img src="${r.fromAvatar || 'https://ui-avatars.com/api/?name='+r.fromName}" class="avatar">
+                            </div>
                             <div>
                                 <b style="font-size:15px;">${r.fromName}</b>
                                 <div style="font-size:10px; color:#94a3b8;">Veut être ton ami</div>
@@ -1255,7 +1412,7 @@
 
                 return `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="position:relative;">
+                        <div class="avatar-container" onclick="openProfilePreview('${u.id}')">
                             <img src="${u.avatar}" class="avatar">
                             <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${isOnline ? '#10b981' : '#ef4444'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
@@ -1289,15 +1446,15 @@
             if(!currentUser) return; 
             db.ref('users/' + currentUser.id).update(currentUser); 
             sessionStorage.setItem('hacken_user', JSON.stringify(currentUser)); 
+            updateUI();
         }
-        function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); updateUI(); } }
+        function editProfileName() { const newName = prompt("Nouveau nom :", currentUser.name); if (newName) { currentUser.name = newName; updateUser(); } }
         function updateAvatar(input) { 
             if (input.files && input.files[0]) { 
                 const reader = new FileReader(); 
                 reader.onload = (e) => { 
                     currentUser.avatar = e.target.result; 
                     updateUser(); 
-                    updateUI(); 
                 }; 
                 reader.readAsDataURL(input.files[0]); 
             } 
@@ -1308,7 +1465,7 @@
             document.getElementById('online-list').innerHTML = onlineFriends.map(u => `
                 <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 12px;">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="position:relative;">
+                        <div class="avatar-container" onclick="openProfilePreview('${u.id}')">
                             <img src="${u.avatar}" class="avatar">
                             <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:#10b981; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
@@ -1336,6 +1493,7 @@
             const friendsMap = {};
             currentUser.friends.forEach(f => friendsMap[f.id] = f);
 
+            // Only show friends who have chats OR are online
             const chatRefs = currentUser.friends.map(f => {
                 const chatKey = [currentUser.id, f.id].sort().join('_');
                 return { key: chatKey, friendId: f.id, ref: db.ref('chats/' + chatKey).limitToLast(1) };
@@ -1375,7 +1533,7 @@
                     
                     card.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="position:relative;">
+                        <div class="avatar-container" onclick="event.stopPropagation(); openProfilePreview('${friend.id}')">
                             <img src="${friend.avatar}" class="avatar">
                             <div style="position:absolute; bottom:0; right:0; width:10px; height:10px; background:${friend.online ? '#10b981' : '#64748b'}; border-radius:50%; border:2px solid var(--card);"></div>
                         </div>
@@ -1399,6 +1557,65 @@
             list.innerHTML = '<div style="text-align:center; padding:20px;">Chargement...</div>';
             switchView('view-chatlist');
             renderChatListRealtime();
+        }
+
+        // --- PROFILE PREVIEW ---
+        function openProfilePreview(userId) {
+            if(userId === currentUser.id) {
+                openProfileModal(currentUser);
+                return;
+            }
+            
+            db.ref('users/' + userId).once('value', snapshot => {
+                const user = snapshot.val();
+                if(user) {
+                    openProfileModal(user);
+                }
+            });
+        }
+        
+        function openProfileModal(user) {
+            profileModalUser = user;
+            const level = Math.floor(user.wins / 5) + 1;
+            const badgeClass = getBadgeClass(level);
+            
+            document.getElementById('modal-avatar').src = user.avatar;
+            document.getElementById('modal-name').innerText = user.name;
+            document.getElementById('modal-wins').innerText = user.wins;
+            document.getElementById('modal-games').innerText = user.games;
+            document.getElementById('modal-level-badge').innerText = `Niveau ${level}`;
+            document.getElementById('modal-title-badge').innerText = getBadgeTitle(level);
+            document.getElementById('modal-challenge-text').innerText = getChallenge(level);
+            
+            const ring = document.getElementById('modal-badge-ring');
+            ring.className = `badge-ring ${badgeClass}`;
+            
+            const nextLevel = getNextLevelThreshold(level);
+            const progress = ((user.wins % 5) / 5) * 100;
+            document.getElementById('modal-level-fill').style.width = `${progress}%`;
+            document.getElementById('modal-next-level').innerText = nextLevel;
+            
+            const addBtn = document.getElementById('modal-add-friend-btn');
+            const isFriend = localDB.friends.find(f => f.id === user.id);
+            if(isFriend || user.id === currentUser.id) {
+                addBtn.style.display = 'none';
+            } else {
+                addBtn.style.display = 'block';
+            }
+            
+            document.getElementById('profile-modal').classList.remove('hidden');
+        }
+        
+        function closeProfileModal() {
+            document.getElementById('profile-modal').classList.add('hidden');
+            profileModalUser = null;
+        }
+        
+        function addFriendFromModal() {
+            if(profileModalUser) {
+                sendFriendRequest(profileModalUser.id, profileModalUser.id, profileModalUser.name);
+                closeProfileModal();
+            }
         }
 
         // --- MODE SELECTION ---
@@ -1470,10 +1687,11 @@
                 let scoreText = "Gagné !"; 
                 if(type === 'speed') scoreText = gameVars.speedScore + " clics"; 
                 createPost(currentUser, currentOpponent, scoreText, type); 
+                updateUser(); // Update level immediately
             } else { 
                 alert("😢 PERDU !"); 
             } 
-            updateUser(); updateUI(); 
+            updateUI(); 
         }
 
         function sendMove(moveData) { 
@@ -2120,3 +2338,4 @@
     </script>
 </body>
 </html>
+
